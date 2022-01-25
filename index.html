@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture Camera</title>
+    <link rel="stylesheet" href="./styles/global.css">
+</head>
+
+<body>
+    <div class="page-wrapper">
+        <div id="capture-app" class="capture-app">
+            <div id="user-media-display" class="capture-display">
+                <div id="capture-error-generic" class="capture-error">
+                    <img src="./images/icons/exclamation-circle-icon.svg" alt="exclamation point icon">
+                    <p>Oops! Something went wrong</p>
+                </div>
+                <div id="capture-error-user-media" class="capture-error">
+                    <img src="./images/icons/video-slash-icon.svg" alt="video error icon">
+                    <p>No camera found</p>
+                    <p>Check your browser's privacy settings to be sure camera and microphone access is allowed for this site</p>
+                </div> 
+                <div class="user-media-player">
+                    <div id="video-countdown" class="video-countdown"></div>
+                    <video id="video-player" class="video-player" muted playsinline></video>
+                </div> 
+            </div>
+            <div class="capture-controls">
+                <ul class="media-options-list hidden" id="media-options">
+                    <li>
+                        <input type="radio" name="media-option" id="media-option-photo" class="media-option-radio"
+                            data-media-option="photo" checked>
+                        <label for="media-option-photo" id="media-option-label-photo" class="media-option-label"
+                            aria-label="photo"></label>
+                    </li>
+                    <li>
+                        <input type="radio" name="media-option" id="media-option-video" class="media-option-radio"
+                            data-media-option="video">
+                        <label for="media-option-video" id="media-option-label-video" class="media-option-label"
+                            aria-label="video"></label>
+                    </li>
+                </ul>
+                <div class="media-capture">
+                    <button id="capture-media" class="media-capture-button start" disabled aria-label="Capture"></button>
+                </div>
+            </div>
+        </div>
+        <div class="gallery-wrapper">
+            <ul id="gallery-list" class="gallery-list"></ul>
+        </div>
+    </div>
+    <script type="text/javascript" src="./scripts/global.js"></script>
+</body>
+
+</html>
