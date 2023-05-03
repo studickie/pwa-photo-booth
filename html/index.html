@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Booth</title>
+    <link rel="stylesheet" href="../public/styles/normalize.css">
+    <link rel="stylesheet" href="../public/styles/global.css">
+</head>
+<body>
+    <div id="page-wrapper">
+        <header id="page-header" class="sr-only">
+            <h1 id="page-heading">Photo booth</h1>
+        </header>
+        <main id="page-main">
+            <div class="capture-ui">
+                <div class="capture-screen">
+                    <video id="video-player" src=""></video>
+                </div>
+                <div class="capture-controls">
+                    <fieldset role="radiogroup" id="media-type-radio-group" class="controls-group">
+                        <legend class="sr-only">Media type</legend>
+                        <div id="media-type-image" class="media-button">
+                            <input type="radio" name="media-type" id="radio-image" class="media-button-radio" value="image" checked>
+                            <label class="media-button-label" for="radio-image" aria-label="Photo"></label>
+                        </div>
+                        <div id="media-type-video" class="media-type-button">
+                            <input type="radio" name="media-type" id="radio-video" class="media-button-radio" value="video">
+                            <label class="media-button-label" for="radio-video" aria-label="Video"></label>
+                        </div>
+                    </fieldset>
+                    <div class="controls-capture">
+                        <button id="button-capture" class="capture-button" aria-label="Capture photo">Snap</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../public/scripts/media-capture.js"></script>
+    <script src="../public/scripts/global.js"></script>
+</body>
+</html>
