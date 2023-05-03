@@ -27,6 +27,7 @@ class MediaCapture {
 
             navigator.mediaDevices.getUserMedia({
                 video: {
+                    aspectRatio: 1.33,
                     width: {
                         min: 960,
                         max: 1280
