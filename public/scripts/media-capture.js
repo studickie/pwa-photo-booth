@@ -43,8 +43,10 @@ class MediaCapture {
 
         return new Promise(onStartup.bind(this));
     }
-    close() {
-        // todo: handle close if videoCapture.isRecording is true
+    stop() {
+        if (this.isRecording) {
+            this.videoCapture.stop();
+        }
 
         const mediaTracks = this.mediaStream.getTracks();
         let iteration = 0;
@@ -57,10 +59,10 @@ class MediaCapture {
         this.videoNode = undefined;
     }
     /**
-     * @returns {Promise<CapturedImage>}
+     * @returns {Promise<CapturedPhoto>}
      */
-    captureImage() {
-        const onCaptureImage = function (resolve) {
+    capturePhoto() {
+        const onCapturePhoto = function (resolve) {
             const { width, height } = this.videoNode.getBoundingClientRect();
             let canvas = document.createElement('canvas');
             canvas.width = width;
@@ -68,10 +70,10 @@ class MediaCapture {
             canvas.getContext('2d').drawImage(this.videoNode, 0, 0, canvas.width, canvas.height);
             const dataUrl = canvas.toDataURL('image/jpeg');
             canvas = undefined;
-            resolve(new CapturedImage(dataUrl, width, height));
+            resolve(new CapturedPhoto(dataUrl, width, height));
         }
         // return a promise to match "captureVideo", not necessary otherwise
-        return new Promise(onCaptureImage.bind(this));
+        return new Promise(onCapturePhoto.bind(this));
     }
     /**
      * @returns {Promise<CapturedVideo>}
@@ -100,7 +102,7 @@ class VideoCapture {
         } else {
             const mimeTypes = [
                 'video/webm',
-                'video/webm\;condes=opus', // preferred, but causes error in FireFox
+                'video/webm\;codec=opus', // preferred, but causes error in FireFox
                 'video/mp4'
             ];
             let iteration = 0;
@@ -158,14 +160,15 @@ class VideoCapture {
     }
 }
 
-class CapturedImage {
+class CapturedPhoto {
     constructor(dataUrl, width, height) {
         this.dataUrl = dataUrl;
         this.width = width;
         this.height = height;
+        this.date = new Date().toISOString();
     }
     get type() {
-        return 'image';
+        return 'photo';
     }
     get previewSource() {
         return this.dataUrl;
@@ -179,6 +182,7 @@ class CapturedVideo {
     constructor(videoBlob) {
         this.videoBlob = videoBlob;
         this.objectUrl = URL.createObjectURL(videoBlob);
+        this.date = new Date().toISOString();
     }
     get type() {
         return 'video';

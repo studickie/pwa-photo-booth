@@ -1,2 +1,3 @@
 # photo-booth
-Uses WebRTC to access a user's camera and microphone to capture an image or video
+
+Browser-based media capture app, built on WebRTC
