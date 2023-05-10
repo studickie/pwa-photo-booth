@@ -10,78 +10,92 @@ class MediaCapture {
     /**
      * @param {HTMLVideoElement} videoNode 
      * @param {Record<String, Number> | undefined} options getUserMedia options: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+     * @returns {Promise<void>}
      */
     start(videoNode, options) {
-        const onStartup = function (resolve) {
-            if (!(videoNode instanceof HTMLVideoElement)) {
-                throw new Error('Requires a video element');
-            }
-            this.videoNode = videoNode;
+        this.videoNode = videoNode;
 
-            const onSuccess = function (mediaStream) {
-                this.mediaStream = mediaStream;
-                this.videoNode.srcObject = this.mediaStream;
-                this.videoNode.play();
-                resolve();
-            }
-
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    aspectRatio: 1.33,
-                    width: {
-                        min: 960,
-                        max: 1280
-                    }
-                },
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 44100,
-                    sampleSIze: 16
-                }
-            }).then(onSuccess.bind(this));
+        const onSuccess = function (mediaStream) {
+            this.mediaStream = mediaStream;
+            this.videoNode.srcObject = this.mediaStream;
+            this.videoNode.play();
         }
 
-        return new Promise(onStartup.bind(this));
+        return navigator.mediaDevices.getUserMedia({
+            video: {
+                aspectRatio: 1.33,
+                width: {
+                    min: 960,
+                    max: 1280
+                }
+            },
+            audio: {
+                channelCount: 1,
+                sampleRate: 44100,
+                sampleSIze: 16
+            }
+        }).then(onSuccess.bind(this)).catch(function(error) {
+            if (error instanceof NotAllowedError || error instanceof NotFoundError) {
+                throw new MediaCaptureError(error.message);
+            } else {
+                throw error;
+            }
+        });
     }
     stop() {
         if (this.isRecording) {
-            this.videoCapture.stop();
+            this.videoCapture.pause();
         }
-
-        const mediaTracks = this.mediaStream.getTracks();
-        let iteration = 0;
-        while (iteration < mediaTracks.length) {
-            const track = mediaTracks[iteration];
-            track.stop();
-            iteration++;
+        if (this.mediaStream) {
+            const mediaTracks = this.mediaStream.getTracks();
+            let iteration = 0;
+            while (iteration < mediaTracks.length) {
+                const track = mediaTracks[iteration];
+                track.stop();
+                iteration++;
+            }
         }
+        this.videoCapture = undefined;
         this.mediaStream = undefined;
         this.videoNode = undefined;
     }
     /**
-     * @returns {Promise<CapturedPhoto>}
+     * @returns {CapturedPhoto}
      */
     capturePhoto() {
-        const onCapturePhoto = function (resolve) {
-            const { width, height } = this.videoNode.getBoundingClientRect();
-            let canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            canvas.getContext('2d').drawImage(this.videoNode, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg');
-            canvas = undefined;
-            resolve(new CapturedPhoto(dataUrl, width, height));
+        let trackWidth = 0;
+        let trackHeight = 0;
+        let iteration = 0;
+        const tracks = this.mediaStream.getVideoTracks();
+        while (iteration < tracks.length) {
+            const track = tracks[iteration];
+            if (track.readyState === "live") {
+                const settings = track.settings();
+                trackWidth = settings.width;
+                trackHeight = settings.height;
+                break;
+            }
+            iteration++;
         }
-        // return a promise to match "captureVideo", not necessary otherwise
-        return new Promise(onCapturePhoto.bind(this));
+        
+        let canvas = document.createElement('canvas');
+        canvas.width = trackWidth;
+        canvas.height = trackHeight;
+        canvas.getContext('2d').drawImage(this.videoNode, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        canvas = undefined;
+        return new CapturedPhoto(dataUrl, trackWidth, trackHeight);
     }
     /**
-     * @returns {Promise<CapturedVideo>}
+     * @returns {Promise<CapturedVideo | null>}
      */
     captureVideo() {
         const onCapture = function (video) {
             this.videoCapture = undefined;
-            return new CapturedVideo(video);
+            if (video) {
+                return new CapturedVideo(video);
+            }
+            return null;
         }
 
         this.videoCapture = new VideoCapture();
@@ -97,13 +111,15 @@ class VideoCapture {
         this.mediaRecorder = undefined;
         this.mimeType = undefined;
         if (!window.MediaSource) {
-            // assume iOS
-            this.mimeType = 'video/mp4';
+            this.mimeType = 'video/mp4'; // assume iOS
+
+        } else if (navigator.userAgent.toLowerCase().indexOf("firefox") > -1) {
+            this.mimeType = 'video/webm'; // FireFox
+
         } else {
             const mimeTypes = [
-                'video/webm',
-                'video/webm\;codec=opus', // preferred, but causes error in FireFox
-                'video/mp4'
+                'video/mp4', // Safari, attempt first for best compatability
+                'video/webm\;codec=opus' // Chrome
             ];
             let iteration = 0;
             while (iteration < mimeTypes.length) {
@@ -116,20 +132,17 @@ class VideoCapture {
                 iteration++;
             }
         }
-        if (!this.mimeType) {
-            throw new Error(`Invalid MIME type "${this.mimeType}"`);
-        }
     }
     get isRecording() {
         return this.mediaRecorder.state === "recording";
     }
     /**
      * @param {MediaStream} mediaStream 
-     * @returns {Promise<Blob>}
+     * @returns {Promise<Blob | false>}
      */
     record(mediaStream) {
         const onRecord = function (resolve) {
-            let segments = [];
+            const segments = [];
             const maxLength = 15;
             this.mediaRecorder = new MediaRecorder(mediaStream, {
                 audioBitsPerSecond: 128000,
@@ -142,18 +155,29 @@ class VideoCapture {
                 (maxLength - segments.length <= 0) && this.mediaRecorder.stop();
             }
 
+            const onPause = function () {
+                this.mediaRecorder = undefined;
+                segments.length = 0;
+                resolve(false);
+            }
+
             const onStop = function () {
                 const videoBlob = new Blob(segments, { type: this.mimeType });
                 this.mediaRecorder = undefined;
-                segments = undefined;
+                segments.length = 0;
                 resolve(videoBlob);
             }
 
             this.mediaRecorder.addEventListener('dataavailable', onData.bind(this));
+            this.mediaRecorder.addEventListener('pause', onPause.bind(this));
             this.mediaRecorder.addEventListener('stop', onStop.bind(this));
             this.mediaRecorder.start(1000); // new dataavailable event every second
         }
         return new Promise(onRecord.bind(this));
+    }
+    pause() {
+        // pause event used for handling interruptions, will end capture and discard video segments
+        this.mediaRecorder.pause();
     }
     stop() {
         this.mediaRecorder.stop();
@@ -196,5 +220,14 @@ class CapturedVideo {
     releaseObjectUrl() {
         URL.revokeObjectURL(this.objectUrl);
         this.objectUrl = undefined;
+    }
+}
+
+class MediaCaptureError extends Error {
+    constructor(message) {
+        super(message);
+    }
+    get isMediaCaptureError() {
+        return true;
     }
 }

@@ -35,25 +35,28 @@ const Camera = {
     mediaCapture: undefined,
     // public methods
     startup() {
-        try {
-            const videoNode = document.getElementById('video-player');
-            this.mediaCapture = new MediaCapture();
-            this.mediaCapture.start(videoNode).then(function () {
-                const mediaTypeNode = document.getElementById('media-type-radio-group');
-                mediaTypeNode.addEventListener('change', Camera.onSelectMediaType);
+        const videoNode = document.getElementById('video-player');
+        this.mediaCapture = new MediaCapture();
+        this.mediaCapture.start(videoNode).then(function () {
+            const mediaTypeNode = document.getElementById('media-type-radio-group');
+            mediaTypeNode.addEventListener('change', Camera.onSelectMediaType);
+            const captureNode = document.getElementById('button-capture');
+            captureNode.addEventListener('click', Camera.onCaptureMedia);
 
-                const captureNode = document.getElementById('button-capture');
-                captureNode.addEventListener('click', Camera.onCaptureMedia);
-            });
-        } catch (error) {
-            // todo: display error to user
-            const { message, stack } = error;
+        }).catch(function (error) {
+            const { message, stack, isUserMediaError } = error;
+            if (isUserMediaError) {
+                // todo: display media error window
+            } else {
+                // todo: display generic error window
+            }
             console.log(`Error - ${message}\n${stack}`);
-        }
+        });
     },
     stop() {
-
-    },  
+        this.mediaCapture.stop();
+        this.mediaCapture = undefined;
+    },
     // event handlers
     onSelectMediaType(event) {
         const radioNode = event.target;
@@ -64,9 +67,8 @@ const Camera = {
     onCaptureMedia(event) {
         switch (Camera.mediaType) {
             case 'photo':
-                Camera.mediaCapture.capturePhoto().then(function (photo) {
-                    Gallery.addMedia(photo);
-                });
+                Gallery.addCapture(Camera.mediaCapture.capturePhoto());
+                // todo: stop Camera.mediaCapture
                 break;
             case 'video':
                 if (Camera.mediaCapture.isRecording) {
@@ -74,7 +76,14 @@ const Camera = {
                     Camera.mediaCapture.captureVideoStop();
                 } else {
                     Camera.mediaCapture.captureVideo().then(function (video) {
-                        Gallery.addMedia(video);
+                        if (video) {
+                            Gallery.addCapture(video);
+                        }
+                        // todo: stop Camera.mediaCapture
+                    }).catch(function(error) {
+                        // todo: display generic error window
+                        const { message, stack } = error;
+                        console.log(`Error - ${message}\n${stack}`);
                     });
                 }
                 break;
@@ -98,12 +107,11 @@ const Gallery = {
         const categoryList = document.getElementById('gallery-tabs');
         categoryList.removeEventListener('click', this.onCategoryClick);
     },
-    addMedia(mediaCapture) {
-        this.captures.add(mediaCapture.id, mediaCapture);
+    addCapture(media) {
+        this.captures.add(media.id, media);
     },
     /**
-     * @param {'all'|'photo'|'video'} category 
-     * @returns 
+     * @param {'all'|'photo'|'video'} category
      */
     getMediaByCategory(category) {
         const mapped = {};
@@ -112,8 +120,8 @@ const Gallery = {
         while (!iteration.done) {
             const item = iteration.value;
             if (category === 'all' || category === item.type) {
-                mapped[item.date] !== undefined 
-                    ? mapped[item.date].push(item) 
+                mapped[item.date] !== undefined
+                    ? mapped[item.date].push(item)
                     : mapped[item.date] = [item];
             };
             iteration = iterator.next();
