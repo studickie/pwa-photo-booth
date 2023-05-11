@@ -80,7 +80,7 @@ const Camera = {
                             Gallery.addCapture(video);
                         }
                         // todo: stop Camera.mediaCapture
-                    }).catch(function(error) {
+                    }).catch(function (error) {
                         // todo: display generic error window
                         const { message, stack } = error;
                         console.log(`Error - ${message}\n${stack}`);
@@ -94,13 +94,37 @@ const Camera = {
 };
 
 const Gallery = {
-    captures: new Map(),
-    tab: 'all',
+    category: 'all',
+    get categories() {
+        return ['all', 'photo', 'video'];
+    },
     // public methods
     startup() {
-        // assign event handlers to tabs, gallery clicks
-        const categoryList = document.getElementById('gallery-tabs');
-        categoryList.addEventListener('click', this.onCategoryClick);
+        this.category = 'all';
+        Data.getMedia(this.category).then(function(data) {
+            const keys = Object.keys(data);
+            const fragment = document.createDocumentFragment();
+            while (keys.length) {
+                const key = keys.shift();
+                // todo: build date-group wrapper & heading & list
+                const value = data[key];
+                while (value.length) {
+                    // todo: build list item & append to list
+                    const media = value.shift();
+                }
+                // todo: appened all to fragment
+                fragment.append();
+            }
+            const galleryNode = document.getElementById('gallery-view')
+            galleryNode.appendChild(fragment);
+            // todo: add click listener to galleryNode, implement handler
+            // todo: remove loading spinner
+
+            // assign event handlers to tabs, gallery clicks
+            const categoryList = document.getElementById('gallery-tabs');
+            categoryList.addEventListener('click', this.onCategoryClick);
+            // todo: enable and set focus
+        });
     },
     stop() {
         // unassign event handlers to tabs, gallery clicks
@@ -118,11 +142,11 @@ const Gallery = {
         const iterator = this.captures.values();
         let iteration = iterator.next();
         while (!iteration.done) {
-            const item = iteration.value;
-            if (category === 'all' || category === item.type) {
-                mapped[item.date] !== undefined
-                    ? mapped[item.date].push(item)
-                    : mapped[item.date] = [item];
+            const media = iteration.value;
+            if (category === 'all' || category === media.type) {
+                mapped[media.date] !== undefined
+                    ? mapped[media.date].push(media)
+                    : mapped[media.date] = [media];
             };
             iteration = iterator.next();
         }
@@ -131,28 +155,56 @@ const Gallery = {
     // private methods
     onCategoryClick(event) {
         const tabName = event.target.dataset.value;
-        if (tabName && tabName !== Gallery.tab) {
-            Gallery.tab = tabName;
+        if (tabName !== Gallery.category && Gallery.categories.indexOf(tabName) > -1) {
+            Gallery.category = tabName;
             const nodeList = document.getElementById('gallery-tabs').children; // li
             let iteration = 0;
             while (iteration < nodeList.length) {
                 const item = nodeList.item(iteration);
                 const buttonNode = item.firstElementChild;
-                buttonNode.setAttribute('aria-selected', (buttonNode.dataset.value === Gallery.tab));
+                buttonNode.setAttribute('aria-selected', (buttonNode.dataset.value === Gallery.category));
                 iteration++;
             }
         }
     },
     buildMediaTemplate(media) {
-        const { type, previewSource } = media;
-        return `<li class="gallery-list-item">
-            <img src=${previewSource} alt="Captured ${type}">
-        </li>`;
+        const { type } = media;
+        return `<li class="gallery-list-item ${type}"></li>`;
     }
 };
 
 const Preview = {
 
 };
+
+// todo: impement indexedDB storage for images, videos exist in session-memory only
+// todo: on insert, first get approx. size, do not exceed 10MB
+// todo: return special object that has method to return html
+const Data = {
+    getMedia() {
+        return new Promise(function (resolve) {
+            const data = {
+                '05-10-2023': [{ type: 'video' }, { type: 'video' }, { type: 'photo' }, { type: 'photo' }],
+                '05-09-2023': [{ type: 'video' }, { type: 'photo' }, { type: 'photo' }],
+                '05-08-2023': [{ type: 'photo' }, { type: 'photo' }],
+                '05-06-2023': [{ type: 'video' }, { type: 'video' }, { type: 'photo' }, { type: 'photo' }, { type: 'video' }],
+                '05-04-2023': [{ type: 'video' }]
+            };
+            resolve(data);
+        });
+    }
+};
+
+const fnCompose = (fns) => {
+    return (data) => {
+        let acc = data;
+        let i = fns.length;
+        while (i > 0) {
+            acc = fns[i - 1](acc);
+            i--;
+        }
+        return acc;
+    }
+}
 
 App.startup();

@@ -19,14 +19,13 @@ class MediaCapture {
             this.mediaStream = mediaStream;
             this.videoNode.srcObject = this.mediaStream;
             this.videoNode.play();
+            return true;
         }
 
         return navigator.mediaDevices.getUserMedia({
             video: {
-                aspectRatio: 1.33,
                 width: {
-                    min: 960,
-                    max: 1280
+                    max: 1920
                 }
             },
             audio: {
@@ -35,8 +34,10 @@ class MediaCapture {
                 sampleSIze: 16
             }
         }).then(onSuccess.bind(this)).catch(function(error) {
+            const { message, stack } = error;
+            console.log(`ERROR - ${message}\n${stack}`);
             if (error instanceof NotAllowedError || error instanceof NotFoundError) {
-                throw new MediaCaptureError(error.message);
+                return false;
             } else {
                 throw error;
             }
@@ -69,7 +70,7 @@ class MediaCapture {
         const tracks = this.mediaStream.getVideoTracks();
         while (iteration < tracks.length) {
             const track = tracks[iteration];
-            if (track.readyState === "live") {
+            if (track.readyState === 'live') {
                 const settings = track.settings();
                 trackWidth = settings.width;
                 trackHeight = settings.height;
@@ -113,18 +114,18 @@ class VideoCapture {
         if (!window.MediaSource) {
             this.mimeType = 'video/mp4'; // assume iOS
 
-        } else if (navigator.userAgent.toLowerCase().indexOf("firefox") > -1) {
+        } else if (navigator.userAgent.toLowerCase().indexOf('firefox') > -1) {
             this.mimeType = 'video/webm'; // FireFox
 
         } else {
             const mimeTypes = [
-                'video/mp4', // Safari, attempt first for best compatability
-                'video/webm\;codec=opus' // Chrome
+                'video/mp4', // Safari, attempt first for best support
+                'video/webm\;codecs=opus' // Chrome
             ];
             let iteration = 0;
             while (iteration < mimeTypes.length) {
                 const type = mimeTypes[iteration];
-                // marked "experimental", results might not be accurate
+                // marked 'experimental', results might not be accurate
                 if (MediaSource.isTypeSupported(type) === true) {
                     this.mimeType = type;
                     break;
@@ -134,7 +135,7 @@ class VideoCapture {
         }
     }
     get isRecording() {
-        return this.mediaRecorder.state === "recording";
+        return this.mediaRecorder.state === 'recording';
     }
     /**
      * @param {MediaStream} mediaStream 
@@ -171,7 +172,7 @@ class VideoCapture {
             this.mediaRecorder.addEventListener('dataavailable', onData.bind(this));
             this.mediaRecorder.addEventListener('pause', onPause.bind(this));
             this.mediaRecorder.addEventListener('stop', onStop.bind(this));
-            this.mediaRecorder.start(1000); // new dataavailable event every second
+            this.mediaRecorder.start(1000); // dataavailable event every second
         }
         return new Promise(onRecord.bind(this));
     }
@@ -194,10 +195,7 @@ class CapturedPhoto {
     get type() {
         return 'photo';
     }
-    get previewSource() {
-        return this.dataUrl;
-    }
-    get dataSource() {
+    get data() {
         return this.dataUrl;
     }
 }
@@ -205,29 +203,12 @@ class CapturedPhoto {
 class CapturedVideo {
     constructor(videoBlob) {
         this.videoBlob = videoBlob;
-        this.objectUrl = URL.createObjectURL(videoBlob);
         this.date = new Date().toISOString();
     }
     get type() {
         return 'video';
     }
-    get previewSource() {
-        return this.objectUrl;
-    }
-    get dataSource() {
+    get data() {
         return this.videoBlob;
-    }
-    releaseObjectUrl() {
-        URL.revokeObjectURL(this.objectUrl);
-        this.objectUrl = undefined;
-    }
-}
-
-class MediaCaptureError extends Error {
-    constructor(message) {
-        super(message);
-    }
-    get isMediaCaptureError() {
-        return true;
     }
 }
