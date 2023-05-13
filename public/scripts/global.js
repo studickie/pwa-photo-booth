@@ -1,3 +1,5 @@
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function withQueryOptions(fn) {
     return function queryOptions() {
         const args = arguments.slice();
@@ -19,6 +21,48 @@ const DomUtils = {
         node.classList.toggle('display-none', !isShown);
         return true;
     })
+};
+
+class GalleryMedia {
+    /**
+    * @constructor
+    * @param {String} dataUrl 
+    * @param {'photo' | 'video'} mediaType 
+    * @param {String} createdOn ISO date string
+    */
+    constructor(dataUrl, mediaType, createdOn) {
+        this.dataUrl = dataUrl;
+        this.type = mediaType;
+        this.date = createdOn;
+    }
+}
+
+// todo: impement indexedDB storage for images, videos exist in session-memory only
+// todo: on insert, first get approx. size, do not exceed 10MB
+// todo: return special object that has method to return html
+const Store = {
+    getMedia() {
+        return new Promise(function (resolve) {
+            const data = [
+                { type: 'video', date: '05-03-2023' },
+                { type: 'video', date: '05-03-2023' },
+                { type: 'photo', date: '05-03-2023' },
+                { type: 'photo', date: '05-03-2023' },
+                { type: 'video', date: '05-05-2023' },
+                { type: 'photo', date: '05-05-2023' },
+                { type: 'photo', date: '05-05-2023' },
+                { type: 'photo', date: '05-06-2023' },
+                { type: 'photo', date: '05-06-2023' },
+                { type: 'video', date: '05-09-2023' },
+                { type: 'video', date: '05-09-2023' },
+                { type: 'photo', date: '05-10-2023' },
+                { type: 'photo', date: '05-10-2023' },
+                { type: 'video', date: '05-11-2023' },
+                { type: 'video', date: '05-12-2023' }
+            ];
+            resolve(data);
+        });
+    }
 };
 
 const App = {
@@ -94,117 +138,94 @@ const Camera = {
 };
 
 const Gallery = {
-    category: 'all',
+    media: new Set(),
+    category: 'all', // 'all' | 'photo' | 'video'
     get categories() {
         return ['all', 'photo', 'video'];
     },
     // public methods
     startup() {
         this.category = 'all';
-        Data.getMedia(this.category).then(function(data) {
-            const keys = Object.keys(data);
-            const fragment = document.createDocumentFragment();
-            while (keys.length) {
-                const key = keys.shift();
-                // todo: build date-group wrapper & heading & list
-                const value = data[key];
-                while (value.length) {
-                    // todo: build list item & append to list
-                    const media = value.shift();
-                }
-                // todo: appened all to fragment
-                fragment.append();
+        Store.getMedia(this.category).then(function (data) {
+            const dataSorted = data.sort((a, b) => {
+                return new Date(a.date).getTime() > new Date(b.date).getTime() ? -1 : 1;
+            });
+            while (dataSorted.length) {
+                const { type, date } = dataSorted.shift();
+                Gallery.media.add({ type, date });
+                // Gallery.media.add(new GalleryMedia('', type, date));
             }
-            const galleryNode = document.getElementById('gallery-view')
-            galleryNode.appendChild(fragment);
-            // todo: add click listener to galleryNode, implement handler
-            // todo: remove loading spinner
-
-            // assign event handlers to tabs, gallery clicks
-            const categoryList = document.getElementById('gallery-tabs');
-            categoryList.addEventListener('click', this.onCategoryClick);
-            // todo: enable and set focus
+            Gallery.render();
+            // todo: hide loading spinner
         });
     },
-    stop() {
-        // unassign event handlers to tabs, gallery clicks
-        const categoryList = document.getElementById('gallery-tabs');
-        categoryList.removeEventListener('click', this.onCategoryClick);
-    },
-    addCapture(media) {
-        this.captures.add(media.id, media);
-    },
-    /**
-     * @param {'all'|'photo'|'video'} category
-     */
-    getMediaByCategory(category) {
-        const mapped = {};
-        const iterator = this.captures.values();
+    render() {
+        const fragment = document.createDocumentFragment();
+        const iterator = Gallery.media.values();
         let iteration = iterator.next();
         while (!iteration.done) {
             const media = iteration.value;
-            if (category === 'all' || category === media.type) {
-                mapped[media.date] !== undefined
-                    ? mapped[media.date].push(media)
-                    : mapped[media.date] = [media];
-            };
+            const node = Gallery.buildGalleryListItem();
+            fragment.append(node);
             iteration = iterator.next();
         }
-        return mapped;
+            const parentNode = document.getElementById('gallery-list');
+            parentNode.innerHTML = '';
+            parentNode.appendChild(fragment);
     },
+    // render() {
+    //     const mapped = {};
+    //     const iterator = this.media.values();
+    //     let iteration = iterator.next();
+    //     while (!iteration.done) {
+    //         const media = iteration.value;
+    //         if (this.category === 'all' || this.category === media.type) {
+    //             !mapped[media.date] && (mapped[media.date] = this.buildGalleryList());
+    //             mapped[media.date].appendChild(this.buildGalleryListItem())
+    //         };
+    //         iteration = iterator.next();
+    //     }
+    //     const mappedKeys = Object.keys(mapped).sort((a, b) => {
+    //         // descending order
+    //         return new Date(a.date).getTime() > new Date(b.date).getTime() ? -1 : 1;
+    //     })
+    //     const fragment = document.createDocumentFragment();
+    //     while (mappedKeys.length) {
+    //         const key = mappedKeys.shift(); // most recent first
+    //         const value = mapped[key];
+    //         const date = new Date(key);
+    //         const dateHeading = `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+    //         const wrapper = this.buildGalleryGroup(dateHeading);
+    //         wrapper.appendChild(value);
+    //         fragment.append(wrapper);
+    //     }
+    //     const parentNode = document.getElementById('gallery-view');
+    //     parentNode.innerHTML = '';
+    //     parentNode.appendChild(fragment);
+    // },
     // private methods
-    onCategoryClick(event) {
-        const tabName = event.target.dataset.value;
-        if (tabName !== Gallery.category && Gallery.categories.indexOf(tabName) > -1) {
-            Gallery.category = tabName;
-            const nodeList = document.getElementById('gallery-tabs').children; // li
-            let iteration = 0;
-            while (iteration < nodeList.length) {
-                const item = nodeList.item(iteration);
-                const buttonNode = item.firstElementChild;
-                buttonNode.setAttribute('aria-selected', (buttonNode.dataset.value === Gallery.category));
-                iteration++;
-            }
-        }
+    buildGalleryGroup(heading) {
+        const h = document.createElement('h2');
+        h.textContent = heading;
+        const div = document.createElement('div');
+        div.classList = 'gallery-group';
+        div.appendChild(h);
+        return div;
     },
-    buildMediaTemplate(media) {
-        const { type } = media;
-        return `<li class="gallery-list-item ${type}"></li>`;
+    buildGalleryList() {
+        const ul = document.createElement('ul');
+        ul.classList = 'gallery-list';
+        return ul;
+    },
+    buildGalleryListItem(src) {
+        const li = document.createElement('li');
+        li.classList = 'gallery-list-item';
+        return li;
     }
 };
 
 const Preview = {
 
 };
-
-// todo: impement indexedDB storage for images, videos exist in session-memory only
-// todo: on insert, first get approx. size, do not exceed 10MB
-// todo: return special object that has method to return html
-const Data = {
-    getMedia() {
-        return new Promise(function (resolve) {
-            const data = {
-                '05-10-2023': [{ type: 'video' }, { type: 'video' }, { type: 'photo' }, { type: 'photo' }],
-                '05-09-2023': [{ type: 'video' }, { type: 'photo' }, { type: 'photo' }],
-                '05-08-2023': [{ type: 'photo' }, { type: 'photo' }],
-                '05-06-2023': [{ type: 'video' }, { type: 'video' }, { type: 'photo' }, { type: 'photo' }, { type: 'video' }],
-                '05-04-2023': [{ type: 'video' }]
-            };
-            resolve(data);
-        });
-    }
-};
-
-const fnCompose = (fns) => {
-    return (data) => {
-        let acc = data;
-        let i = fns.length;
-        while (i > 0) {
-            acc = fns[i - 1](acc);
-            i--;
-        }
-        return acc;
-    }
-}
 
 App.startup();

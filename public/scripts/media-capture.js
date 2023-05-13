@@ -125,7 +125,7 @@ class VideoCapture {
             let iteration = 0;
             while (iteration < mimeTypes.length) {
                 const type = mimeTypes[iteration];
-                // marked 'experimental', results might not be accurate
+                // marked "experimental", results might not be accurate
                 if (MediaSource.isTypeSupported(type) === true) {
                     this.mimeType = type;
                     break;
@@ -190,7 +190,9 @@ class CapturedPhoto {
         this.dataUrl = dataUrl;
         this.width = width;
         this.height = height;
-        this.date = new Date().toISOString();
+        this.created = (d => 
+            new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
+        )(new Date());
     }
     get type() {
         return 'photo';
@@ -203,7 +205,9 @@ class CapturedPhoto {
 class CapturedVideo {
     constructor(videoBlob) {
         this.videoBlob = videoBlob;
-        this.date = new Date().toISOString();
+        this.created = (d => 
+            new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
+        )(new Date());
     }
     get type() {
         return 'video';
