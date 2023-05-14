@@ -33,15 +33,7 @@ class MediaCapture {
                 sampleRate: 44100,
                 sampleSIze: 16
             }
-        }).then(onSuccess.bind(this)).catch(function(error) {
-            const { message, stack } = error;
-            console.log(`ERROR - ${message}\n${stack}`);
-            if (error instanceof NotAllowedError || error instanceof NotFoundError) {
-                return false;
-            } else {
-                throw error;
-            }
-        });
+        }).then(onSuccess.bind(this));
     }
     stop() {
         if (this.isRecording) {

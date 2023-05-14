@@ -1,8 +1,10 @@
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const SCREENS = { camera: 0, gallery: 1, preview: 2 };
+const MEDIA_TYPES = { photo: 0, video: 1 };
 
 function withQueryOptions(fn) {
     return function queryOptions() {
-        const args = arguments.slice();
+        const args = Array.from(arguments);
         const node = args.shift();
         if (node instanceof HTMLElement) {
             return fn.apply(null, [node, ...args]);
@@ -17,6 +19,10 @@ function withQueryOptions(fn) {
 }
 
 const DomUtils = {
+    setDisabled: withQueryOptions(function (node, isDisabled) {
+        node.disabled = !isDisabled;
+        return true;
+    }),
     showNode: withQueryOptions(function (node, isShown) {
         node.classList.toggle('display-none', !isShown);
         return true;
@@ -66,16 +72,40 @@ const Store = {
 };
 
 const App = {
+    screen: SCREENS.gallery,
     startup() {
+        App.screen === SCREENS.gallery;
+        DomUtils.showNode('screen-gallery', true);
         Gallery.startup();
+        // todo: clear loading spinner 
     },
-    onDisplayGallery(event) {
-
+    onClickHandler(event) {
+        const eventId = event.target.id;
+        switch(eventId) {
+            case 'button-capture':
+                break;
+            case 'button-open-gallery':
+                if (App.screen === SCREENS.camera) {
+                    DomUtils.showNode('screen-camera', false);
+                    Camera.stop();
+                }
+                App.screen = SCREENS.gallery;
+                DomUtils.showNode('screen-gallery', true);
+                break;
+            case 'button-open-camera':
+                if (App.screen === SCREENS.gallery) {
+                    DomUtils.showNode('screen-gallery', false);
+                }
+                App.screen = SCREENS.camera;
+                DomUtils.showNode('screen-camera', true);
+                Camera.startup();
+                break;
+        }
     }
 };
 
 const Camera = {
-    mediaType: 'photo',
+    mediaType: MEDIA_TYPES.photo,
     mediaCapture: undefined,
     // public methods
     startup() {
@@ -88,13 +118,12 @@ const Camera = {
             captureNode.addEventListener('click', Camera.onCaptureMedia);
 
         }).catch(function (error) {
-            const { message, stack, isUserMediaError } = error;
-            if (isUserMediaError) {
-                // todo: display media error window
+            if (error.name === 'NotAllowedError') {
+                // todo: display media error screen
             } else {
-                // todo: display generic error window
+                // todo: display generic error screen
             }
-            console.log(`Error - ${message}\n${stack}`);
+            console.log(`Error - ${error.message}`);
         });
     },
     stop() {
@@ -204,19 +233,19 @@ const Gallery = {
     //     parentNode.appendChild(fragment);
     // },
     // private methods
-    buildGalleryGroup(heading) {
-        const h = document.createElement('h2');
-        h.textContent = heading;
-        const div = document.createElement('div');
-        div.classList = 'gallery-group';
-        div.appendChild(h);
-        return div;
-    },
-    buildGalleryList() {
-        const ul = document.createElement('ul');
-        ul.classList = 'gallery-list';
-        return ul;
-    },
+    // buildGalleryGroup(heading) {
+    //     const h = document.createElement('h2');
+    //     h.textContent = heading;
+    //     const div = document.createElement('div');
+    //     div.classList = 'gallery-group';
+    //     div.appendChild(h);
+    //     return div;
+    // },
+    // buildGalleryList() {
+    //     const ul = document.createElement('ul');
+    //     ul.classList = 'gallery-list';
+    //     return ul;
+    // },
     buildGalleryListItem(src) {
         const li = document.createElement('li');
         li.classList = 'gallery-list-item';
@@ -229,3 +258,4 @@ const Preview = {
 };
 
 App.startup();
+document.addEventListener('click', App.onClickHandler);

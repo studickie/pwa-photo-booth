@@ -40,6 +40,10 @@ fieldset {
     border: none;
 }
 
+button>* {
+    pointer-events: none;
+}
+
 button:hover {
     cursor: pointer;
 }
@@ -53,7 +57,7 @@ body {
     display: flex;
 }
 
-.app-window {
+.app-screen {
     flex: 0 0 100%;
     display: flex;
     flex-flow: column nowrap;
@@ -87,7 +91,8 @@ body {
     }
 }
 
-.icon-button {
+.icon-button,
+.icon-button-light {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -99,15 +104,24 @@ body {
     border-radius: 50%;
 }
 
-.icon-button>svg {
+.icon-button>svg,
+.icon-button-light>svg {
     width: 32px;
     height: 32px;
     fill: var(--color-grey-dark);
 }
 
-/*  APP CAMERA WINDOW
+.icon-button>svg {
+    fill: var(--color-grey-dark);
+}
+
+.icon-button-light>svg {
+    fill: var(--color-grey-light);
+}
+
+/*  APP CAMERA screen
 */
-#window-camera {
+#screen-camera {
     display: flex;
     flex-flow: column nowrap;
     background-color: black;
@@ -129,43 +143,60 @@ body {
 .camera-controls {
     flex: 0 0 96px;
     display: flex;
+    justify-content: flex-end;
     flex-flow: row nowrap;
     align-items: center;
-    padding: 0 16px;
     background-color: black;
 }
 
-.camera-control-group {
+.camera-control:nth-of-type(2) {
     flex: 0 1 50%;
     display: flex;
-    flex-flow: row nowrap;
-    max-width: calc(50% - 28px);
+    justify-content: flex-end;
+    max-width: calc(50% - 32px);
 }
 
-.camera-control-capture {
+.camera-control:nth-of-type(1) {
     flex: 0 0 auto;
 }
 
+@media (min-width: 0px) and (max-width: 940px) {
+    .camera-controls {
+        padding: 0 16px;
+    }
+}
+
 @media (min-width: 0px) and (max-width: 940px) and (orientation: landscape) {
-    #window-camera {
+    #screen-camera {
         flex-flow: row nowrap;
     }
 
     .camera-controls {
-        flex-flow: column nowrap;
+        flex-flow: column-reverse nowrap;
         padding: 16px 0;
     }
 
-    .camera-control-group {
+    .camera-control:nth-of-type(2) {
         flex-flow: column nowrap;
+        justify-content: flex-start;
         max-width: 100%;
-        max-height: calc(50% - 28px);
+        max-height: calc(50% - 32px);
+    }
+
+    .camera-control:nth-of-type(1) {
+        flex: 0 0 auto;
     }
     
     #video-player {
         width: auto;
         max-width: 100%;
         height: 100%;
+    }
+}
+
+@media (min-width: 940px) {
+    .camera-controls {
+        padding: 0 32px;
     }
 }
 
@@ -236,8 +267,8 @@ body {
 */
 #button-capture {
     position: relative;
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     background-color: transparent;
     border: none;
 }
@@ -263,11 +294,22 @@ body {
 #button-capture::after {
     left: 50%;
     top: 50%;
+    transform-origin: left top;
     transform: translate(-50%, -50%);
-    width: 65%;
-    height: 65%;
+    width: 48%;
+    height: 48%;
     background-color: var(--color-white);
     border-radius: 50%;
+    transition: transform 240ms ease;
+}
+
+#button-capture:hover::after {
+    transform: scale(1.16) translate(-50%, -50%);
+}
+
+#button-capture:active::after {
+    transition: transform 180ms ease;
+    transform: scale(0.83) translate(-50%, -50%);
 }
 
 @media (min-width: 0px) and (max-width: 940px) and (orientation: landscape) {
@@ -276,13 +318,12 @@ body {
     }
 }
 
-/* APP GALLERY WINDOW
+/* APP GALLERY screen
 */
 .gallery-header {
     flex: 0 0 96px;
     display: flex;
     align-items: center;
-    padding: 0 8px;
     background-color: var(--color-white);
 }
 
@@ -314,4 +355,16 @@ body {
     height: 0;
     padding-bottom: 100%;
     background-color: var(--color-white);
+}
+
+@media (min-width: 0px) and (max-width: 940px) {
+    .gallery-header {
+        padding: 0 16px;
+    }
+}
+
+@media (min-width: 940px) {
+    .gallery-header {
+        padding: 0 24px;
+    }
 }
