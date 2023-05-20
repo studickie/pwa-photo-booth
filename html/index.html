@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- todo: add strict CSP -->
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo Booth</title>
+    <meta name="description" content="Media capture PWA">
     <link rel="stylesheet" href="../public/styles/normalize.css">
     <link rel="stylesheet" href="../public/styles/global.css">
 </head>
@@ -12,7 +14,7 @@
     <div id="capture-app" class="app-wrapper">
         <div id="screen-camera" class="app-screen display-none">
             <div class="camera-screen">
-                <video id="video-player" src=""></video>
+                <video id="video-player" src="" muted></video>
             </div>
             <div class="camera-controls">
                 <span class="camera-control">
@@ -43,7 +45,7 @@
         </div>
         <div id="screen-preview" class="app-screen display-none"></div>
     </div>
-    <!-- gallery modal -->
+    <!-- confirmation modal -->
     <script src="../public/scripts/media-capture.js"></script>
     <script src="../public/scripts/global.js"></script>
 </body>

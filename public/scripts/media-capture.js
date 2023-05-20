@@ -56,34 +56,40 @@ class MediaCapture {
      * @returns {CapturedPhoto}
      */
     capturePhoto() {
-        let trackWidth = 0;
-        let trackHeight = 0;
-        let iteration = 0;
-        const tracks = this.mediaStream.getVideoTracks();
-        while (iteration < tracks.length) {
-            const track = tracks[iteration];
-            if (track.readyState === 'live') {
-                const settings = track.settings();
-                trackWidth = settings.width;
-                trackHeight = settings.height;
-                break;
+        function onCapturePhoto(resolve) {
+            let trackWidth = 0;
+            let trackHeight = 0;
+            let iteration = 0;
+            const tracks = this.mediaStream.getVideoTracks();
+            while (iteration < tracks.length) {
+                const track = tracks[iteration];
+                if (track.readyState === 'live') {
+                    const settings = track.settings();
+                    trackWidth = settings.width;
+                    trackHeight = settings.height;
+                    break;
+                }
+                iteration++;
             }
-            iteration++;
+
+            let canvas = document.createElement('canvas');
+            canvas.width = trackWidth;
+            canvas.height = trackHeight;
+            canvas.getContext('2d').drawImage(this.videoNode, 0, 0, canvas.width, canvas.height);
+            // const dataUrl = canvas.toDataURL('image/jpeg');
+            canvas.toBlob(function (blob) {
+                canvas = undefined;
+                const media = new CapturedPhoto(blob, trackWidth, trackHeight);
+                resolve(media);
+            }, 'image/jpeg');
         }
-        
-        let canvas = document.createElement('canvas');
-        canvas.width = trackWidth;
-        canvas.height = trackHeight;
-        canvas.getContext('2d').drawImage(this.videoNode, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        canvas = undefined;
-        return new CapturedPhoto(dataUrl, trackWidth, trackHeight);
+        return new Promise(onCapturePhoto.bind(this));
     }
     /**
      * @returns {Promise<CapturedVideo | null>}
      */
     captureVideo() {
-        const onCapture = function (video) {
+        function onCapture(video) {
             this.videoCapture = undefined;
             if (video) {
                 return new CapturedVideo(video);
@@ -178,28 +184,33 @@ class VideoCapture {
 }
 
 class CapturedPhoto {
-    constructor(dataUrl, width, height) {
-        this.dataUrl = dataUrl;
+    /**
+     * @constructor 
+     * @param {Blob} data 
+     * @param {Number} width 
+     * @param {Height} height 
+     */
+    constructor(data, width, height) {
+        this.data = data;
         this.width = width;
         this.height = height;
-        this.created = (d => 
-            new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
-        )(new Date());
+        this.timestamp = new Date().getTime();
+    }
+    get id() {
+        return this.timestamp;
     }
     get type() {
         return 'photo';
     }
-    get data() {
-        return this.dataUrl;
+    get size() {
+        return this.data.size;
     }
 }
 
 class CapturedVideo {
     constructor(videoBlob) {
         this.videoBlob = videoBlob;
-        this.created = (d => 
-            new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
-        )(new Date());
+        this.timestamp = new Date().getTime();
     }
     get type() {
         return 'video';
