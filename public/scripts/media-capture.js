@@ -64,7 +64,7 @@ class MediaCapture {
             while (iteration < tracks.length) {
                 const track = tracks[iteration];
                 if (track.readyState === 'live') {
-                    const settings = track.settings();
+                    const settings = track.getSettings();
                     trackWidth = settings.width;
                     trackHeight = settings.height;
                     break;
@@ -199,23 +199,44 @@ class CapturedPhoto {
     get id() {
         return this.timestamp;
     }
+    get date() {
+        const date = new Date(this.timestamp);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+    }
     get type() {
         return 'photo';
     }
     get size() {
-        return this.data.size;
+        return this.data.size * Math.pow(10, -6);
+    }
+    get meta() {
+        return [
+            ['width', this.width], 
+            ['height', this.height]
+        ];
     }
 }
 
 class CapturedVideo {
-    constructor(videoBlob) {
-        this.videoBlob = videoBlob;
+    /**
+     * @constructor 
+     * @param {Blob} data
+     */
+    constructor(data) {
+        this.data = data;
         this.timestamp = new Date().getTime();
+    }
+    get id() {
+        return this.timestamp;
+    }
+    get date() {
+        const date = new Date(this.timestamp);
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
     }
     get type() {
         return 'video';
     }
-    get data() {
-        return this.videoBlob;
+    get size() {
+        return this.data.size * Math.pow(10, -6);
     }
 }

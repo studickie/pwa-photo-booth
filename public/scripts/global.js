@@ -8,7 +8,7 @@ const DB_GALLERY = 'gallery';
 const DB_UPGRADE = function (event) {
     const db = event.target.result;
     console.log(`Upgrading to version ${db.version}`);
-    db.createObjectStore(DB_STORES.gallery, { keyPath: 'id' });
+    db.createObjectStore(DB_GALLERY, { keyPath: 'id' });
 }
 
 function withQueryOptions(fn) {
@@ -25,18 +25,6 @@ function withQueryOptions(fn) {
         }
         return undefined;
     }
-}
-
-const mapToGalleryMedia = (storeItem) => {
-    const { timestamp, data, type } = storeItem;
-    return new GalleryMedia(timestamp, data, type);
-};
-
-const mapToStoredMedia = (captureItem) => {
-    const { timestamp, data, type } = captureItem;
-    return {
-        timestamp,
-    };
 }
 
 const DomUtils = {
@@ -90,28 +78,29 @@ const CustomEvent = {
     }
 };
 
-class GalleryItem {
+class GalleryMedia {
     /**
     * @constructor
-    * @param {Number} timestamp // index
+    * @param {Number} id 
     * @param {Blob} data 
+    * @param {String} date ISO date string
     * @param {'photo' | 'video'} type 
     */
-    constructor(timestamp, data, type) {
-        this.timestamp = timestamp;
-        this.data = data
-        this.dataUrl = URL.createObjectURL(data);
+    constructor(id, data, date, type) {
+        this.id = id;
+        this.data = URL.createObjectURL(data);
         this.type = type;
-        this.date = (d => (
-            new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString()
-        ))(new Date(timestamp));
+        this.date = date;
+    }
+    get preview() {
+        return this.data;
     }
     revokeObjectUrl() {
-        URL.revokeObjectURL(this.dataUrl);
+        URL.revokeObjectURL(this.data);
     }
 }
 
-class StoreTransation {
+class StoreTransaction {
     /**
      * @constructor
      * @param {IDBDatabase} conn 
@@ -126,7 +115,7 @@ class StoreTransation {
     getItems(storeName) {
         const conn = this.conn;
         return new Promise(function transaction(resolve, reject) {
-            const transaction = conn.transaction(storeName);
+            const transaction = conn.transaction(storeName, 'readonly');
             const store = transaction.objectStore(storeName);
             const request = store.getAll();
 
@@ -136,8 +125,6 @@ class StoreTransation {
             request.onsuccess = function () {
                 resolve(request.result);
             }
-        }).finally(function () {
-            conn.close();
         });
     }
     /**
@@ -148,7 +135,7 @@ class StoreTransation {
     addItem(storeName, data) {
         const conn = this.conn;
         return new Promise(function (resolve, reject) {
-            const transaction = conn.transaction(storeName);
+            const transaction = conn.transaction(storeName, 'readwrite');
             const store = transaction.objectStore(storeName);
             const request = store.add(data);
 
@@ -158,8 +145,6 @@ class StoreTransation {
             request.onsuccess = function () {
                 resolve(true);
             }
-        }).finally(function () {
-            conn.close();
         });
     }
     /**
@@ -170,7 +155,7 @@ class StoreTransation {
     deleteItem(storeName, key) {
         const conn = this.conn;
         return new Promise(function transaction(resolve, reject) {
-            const transaction = conn.transaction(storeName);
+            const transaction = conn.transaction(storeName, 'readwrite');
             const store = transaction.objectStore(storeName);
             const request = store.delete(key);
 
@@ -180,28 +165,39 @@ class StoreTransation {
             request.onsuccess = function () {
                 resolve(true);
             }
-        }).finally(function () {
-            conn.close();
         });
     }
 }
 
-const Store = {
+class Store {
     /**
-     * @returns {Promise<Number>} approximate total storage size in Mb
+     * @static
+     * @returns {Number}
      */
-    estimatedSize() {
-        return navigator.storage.estimate().then(function (value) {
-            return value * Math.pow(10, -6);
-        });
-    },
+    static get maxStorage() {
+        return 10; // 10Mb for all app files and persisted images
+    }
     /**
+     * @static
+     * @returns {Promise<Record<'quota'|'usage', Number>} 'usage' is size in Mb
+     */
+    static details() {
+        return navigator.storage.estimate().then(function (result) {
+            const { usage, quota } = result;
+            return { 
+                quota: (quota * Math.pow(10, -6)), 
+                usage: (usage * Math.pow(10, -6)) 
+            };
+        });
+    }
+    /**
+     * @static
      * @param {String} name
      * @param {Number} version
      * @param {(event: any) => void} onUpgrade
-     * @returns {Promise<StoreTransation>}
+     * @returns {Promise<StoreTransaction>}
      */
-    connect(name, version, onUpgrade) {
+    static connect(name, version, onUpgrade) {
         return new Promise(function requestConnect(resolve, reject) {
             const request = window.indexedDB.open(name, version);
 
@@ -216,8 +212,8 @@ const Store = {
                     onUpgrade(event);
                 }
             }
-        }).then(function(conn) {
-            return new StoreTransation(conn);
+        }).then(function (conn) {
+            return new StoreTransaction(conn);
         });
     }
 }
@@ -225,22 +221,59 @@ const Store = {
 const App = {
     screen: SCREEN_GALLERY,
     mediaCapture: undefined,
-    get maxStorage() {
-        return 10; // 10Mb for all app files and persisted images
+    _media: new Map(),
+    set media(mediaList) {
+        this._media.clear();
+        let iteration = 0;
+        while (iteration < mediaList.length) {
+            const { id, date, data, type } = mediaList[iteration];
+            this._media.set(id, new GalleryMedia(id, data, date, type));
+            iteration++;
+        }
+    },
+    get media() {
+        return Array.from(this._media.values());
+    },
+    addMediaItem(mediaItem) {
+        const { id, date, data, type } = mediaItem;
+        this._media.set(id, new GalleryMedia(id, data, date, type));
+        return true;
+    },
+    getMediaItem(itemId) {
+        itemId = typeof itemId !== 'number' ? parseInt(itemId) : itemId;
+        return this._media.has(itemId) ? this._media.get(itemId) : null;
+    },
+    deleteMediaItem(itemId) {
+        itemId = typeof itemId !== 'number' ? parseInt(itemId) : itemId;
+        if (this._media.has(itemId)) {
+            const media = this._media.get(itemId);
+            this._media.delete(itemId);
+            media.revokeObjectUrl();
+            media = undefined;
+        }
+        return true;
     },
     startup() {
         this.mediaCapture = new MediaCapture();
 
         Store.connect(DB_NAME, DB_VERSION, DB_UPGRADE).then(function (conn) {
             conn.getItems(DB_GALLERY).then(function (results) {
+                App.media = results;
+                Gallery.render(App.media);
                 // todo: map to gallery items
                 // ? is gallery the 'landing screen'?
                 // todo: hide loading spinner and show gallery
             });
         });
+
+        const appNode = document.getElementById('capture-app');
+        appNode.addEventListener('click', this.onClickHandler);
     },
+    /**
+     * @param {MouseEvent} event 
+     */
     onClickHandler(event) {
-        const eventId = event.target.id;
+        const eventId = event.target.dataset.eventId;
         switch (eventId) {
             case 'button-capture':
                 App.onCapture();
@@ -269,110 +302,77 @@ const App = {
                         console.log(`Error - ${error.message}`);
                     });
                 break;
+            case 'anchor-open-preview':
+                event.preventDefault();
+                if (App.screen === SCREEN_GALLERY) {
+                    DomUtils.showNode('screen-gallery', false);
+                }
+                App.screen = SCREEN_PREVIEW;
+                Preview.render(event.target.dataset.id);
+                DomUtils.showNode('screen-preview', true);
+                break;
+            case 'button-close-preview':
+                DomUtils.showNode('screen-preview', false);
+                Preview.render(false);
+                App.screen = SCREEN_GALLERY;
+                DomUtils.showNode('screen-gallery', true);
+                break;
+            case 'button-delete-media':
+                break;
         }
     },
     async onCapture() {
         try {
-            const { id, size, timestamp, data, type, width, height } = App.mediaCapture.capturePhoto();
-            const storageSize = await Store.estimatedSize();
-            if ((storageSize + media.size) < App.maxStorage) {
+            const media = await App.mediaCapture.capturePhoto();
+            const { quota, usage } = await Store.details();
+            if (usage < quota && (usage + media.size) < Store.maxStorage) {
+                const { id, data, date, type } = media;
                 const conn = await Store.connect(DB_NAME, DB_VERSION);
-                await conn.addItem(DB_GALLERY, { id, size, timestamp, data, type, width, height });
+                await conn.addItem(DB_GALLERY, { id, date, data, type });
             } else {
                 // todo: notify user that image will not be saved
             }
-            // todo: create GalleryItem and add to gallery
+            App.addMediaItem(media);
+            Gallery.render(App.media);
         } catch (error) {
 
         }
     }
 };
 
-const Camera = {
-    mediaCapture: undefined,
-    // public methods
-    start() {
-        const videoNode = document.getElementById('video-player');
-        this.mediaCapture = new MediaCapture();
-        this.mediaCapture.start(videoNode).catch(function (error) {
-            if (error.name === 'NotAllowedError') {
-                // todo: display media error screen
-            } else {
-                // todo: display generic error screen
-            }
-            console.log(`Error - ${error.message}`);
-        });
-    },
-    stop() {
-        this.mediaCapture.stop();
-        this.mediaCapture = undefined;
-    },
-    capture() {
-        switch (Camera.mediaType) {
-            case 'photo':
-                this.mediaCapture.capturePhoto().then(function (capturedPhoto) {
-                    CustomEvent.emit('onCapture', capturedPhoto);
-                }).catch(function (error) {
-                    // todo: display generic error to user
-                    const { message, stack } = error;
-                    console.log(`Error - ${message}\n${stack}`);
-                });
-                break;
-            // case 'video':
-            //     if (this.mediaCapture.isRecording) {
-            //         // will stop automatically after X seconds, or on second button click
-            //         this.mediaCapture.captureVideoStop();
-            //     } else {
-            //         this.mediaCapture.captureVideo().then(function (video) {
-            //             if (video) {
-            //                 Gallery.addCapture(video);
-            //             }
-            //             // todo: stop Camera.mediaCapture
-            //         }).catch(function (error) {
-            //             // todo: display generic error window
-            //             const { message, stack } = error;
-            //             console.log(`Error - ${message}\n${stack}`);
-            //         });
-            //     }
-            //     break;
-            default:
-                console.log(`Invalid media type selected "${Camera.mediaType}"`);
-        }
-    }
-};
-
 const Gallery = {
-    media: new Set(),
-    // public methods
-    startup() {
-        // this.category = 'all';
-        // Store.getMedia(this.category).then(function (data) {
-        //     const dataSorted = data.sort((a, b) => {
-        //         return new Date(a.date).getTime() > new Date(b.date).getTime() ? -1 : 1;
-        //     });
-        //     while (dataSorted.length) {
-        //         const { type, date } = dataSorted.shift();
-        //         Gallery.media.add({ type, date });
-        //         // Gallery.media.add(new GalleryMedia('', type, date));
-        //     }
-        //     Gallery.render();
-        //     // todo: hide loading spinner
-        // });
-    },
-    render() {
+    render(mediaList) {
         const fragment = document.createDocumentFragment();
-        const iterator = Gallery.media.values();
-        let iteration = iterator.next();
-        while (!iteration.done) {
-            const media = iteration.value;
-            const node = Gallery.buildGalleryListItem();
+        let iteration = 0;
+        while (iteration < mediaList.length) {
+            const { id, preview } = mediaList[iteration];
+            const node = this.buildGalleryListItem(id, preview, id);
             fragment.append(node);
-            iteration = iterator.next();
+            iteration++;
         }
         const parentNode = document.getElementById('gallery-list');
         parentNode.innerHTML = '';
         parentNode.appendChild(fragment);
     },
+    buildGalleryListItem(id, src) {
+        const span = document.createElement('span');
+        span.setAttribute('style', `background-image:url('${src}');`);
+        span.setAttribute('role', 'presentation');
+
+        const atag = document.createElement('a');
+        atag.href = '#';
+        atag.dataset.id = id;
+        atag.dataset.eventId = 'anchor-open-preview';
+        
+        const li = document.createElement('li');
+        li.id = id;
+        li.classList = 'gallery-list-item';
+        li.appendChild(atag);
+        li.appendChild(span);
+
+        return li;
+    }
+    
     // render() {
     //     const mapped = {};
     //     const iterator = this.media.values();
@@ -417,15 +417,26 @@ const Gallery = {
     //     ul.classList = 'gallery-list';
     //     return ul;
     // },
-    buildGalleryListItem(src) {
-        const li = document.createElement('li');
-        li.classList = 'gallery-list-item';
-        return li;
-    }
+    
 };
 
 const Preview = {
-
+    previewId: undefined,
+    render(itemId) {
+        const node = document.getElementById('preview-view');
+        node.innerHTML = '';
+        if (itemId) {
+            const { id, preview } = App.getMediaItem(itemId);
+            const previewNode = this.buildPreviewItem(id, preview);
+            node.appendChild(previewNode);
+        }
+    },
+    buildPreviewItem(id, src) {
+        const img = document.createElement('img');
+        img.src = src;
+        img.setAttribute('role', 'presentation');
+        return img;
+    }
 };
 
 const ConfirmDialog = {
@@ -444,4 +455,3 @@ const ConfirmDialog = {
 };
 
 App.startup();
-document.addEventListener('click', App.onClickHandler);

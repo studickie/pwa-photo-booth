@@ -6,6 +6,7 @@
     /* --color-white: #F2F0E4; */
     
     --color-white: #F2F2EB;
+    --color-black: #000;
     --color-grey: #73726F;
     --color-grey-light: #D9D8D7;
     --color-grey-dark: #403F3C;
@@ -318,7 +319,7 @@ body {
     }
 }
 
-/* APP GALLERY screen
+/* APP GALLERY SCREEN
 */
 .gallery-header {
     flex: 0 0 96px;
@@ -352,9 +353,36 @@ body {
 }
 
 .gallery-list-item {
+    position: relative;
     height: 0;
     padding-bottom: 100%;
     background-color: var(--color-white);
+}
+
+.gallery-list-item>a,
+.gallery-list-item>span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.gallery-list-item>a {
+    z-index: 200;
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+}
+
+.gallery-list-item>span {
+    z-index: 100;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    pointer-events: none;
 }
 
 @media (min-width: 0px) and (max-width: 940px) {
@@ -367,4 +395,52 @@ body {
     .gallery-header {
         padding: 0 24px;
     }
+}
+
+/* APP PREVIEW SCREEN
+*/
+.preview-header {
+    flex: 0 0 96px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-grey-dark);
+}
+
+.preview-view {
+    flex: 1 0 0%;
+    display: flex;
+    align-items: center;
+    max-height: calc(100% - 96px);
+    overflow: hidden;
+    background-color: var(--color-black);
+}
+
+.preview-view>img {
+    display: block;
+    width: 100%;
+}
+
+@media (min-width: 0px) and (max-width: 940px) {
+    .preview-header {
+        padding: 0 16px;
+    }
+}
+
+@media (min-width: 940px) {
+    .preview-header {
+        padding: 0 24px;
+    }
+}
+
+/* CONFIRMATION MODAL
+*/
+.app-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    width: 100%;
+    height: 100%;
 }
