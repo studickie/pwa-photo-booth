@@ -29,11 +29,15 @@ function withQueryOptions(fn) {
 
 const DomUtils = {
     setDisabled: withQueryOptions(function (node, isDisabled) {
-        node.disabled = !isDisabled;
+        node.disabled = isDisabled;
         return true;
     }),
-    showNode: withQueryOptions(function (node, isShown) {
+    setDisplay: withQueryOptions(function (node, isShown) {
         node.classList.toggle('display-none', !isShown);
+        return true;
+    }),
+    setFocus: withQueryOptions(function (node) {
+        node.focus();
         return true;
     })
 };
@@ -53,18 +57,18 @@ const CustomEvent = {
     },
     once(eventName, handler) {
         if (typeof handler === 'function') {
-            function onceHandler(handler, data) {
+            function onceHandler(data) {
                 handler(data);
-                this.removeListener(eventName, onceHandler);
+                CustomEvent.removeListener(eventName, onceHandler);
             }
-            this.addListener(eventName, onceHandler.bind(this, handler));
+            this.addListener(eventName, onceHandler);
         }
     },
     addListener(eventName, handler) {
         if (this.events.has(eventName)) {
             this.events.get(eventName).add(handler);
         } else {
-            this.events.set(eventName, new Set(handler));
+            this.events.set(eventName, new Set([handler]));
         }
     },
     removeListener(eventName, handler) {
@@ -77,28 +81,6 @@ const CustomEvent = {
         }
     }
 };
-
-class GalleryMedia {
-    /**
-    * @constructor
-    * @param {Number} id 
-    * @param {Blob} data 
-    * @param {String} date ISO date string
-    * @param {'photo' | 'video'} type 
-    */
-    constructor(id, data, date, type) {
-        this.id = id;
-        this.data = URL.createObjectURL(data);
-        this.type = type;
-        this.date = date;
-    }
-    get preview() {
-        return this.data;
-    }
-    revokeObjectUrl() {
-        URL.revokeObjectURL(this.data);
-    }
-}
 
 class StoreTransaction {
     /**
@@ -167,37 +149,37 @@ class StoreTransaction {
             }
         });
     }
+    close() {
+        this.conn.close();
+    }
 }
 
-class Store {
+const Store = {
     /**
-     * @static
      * @returns {Number}
      */
-    static get maxStorage() {
+    get maxStorage() {
         return 10; // 10Mb for all app files and persisted images
-    }
+    },
     /**
-     * @static
      * @returns {Promise<Record<'quota'|'usage', Number>} 'usage' is size in Mb
      */
-    static details() {
+    details() {
         return navigator.storage.estimate().then(function (result) {
             const { usage, quota } = result;
-            return { 
-                quota: (quota * Math.pow(10, -6)), 
-                usage: (usage * Math.pow(10, -6)) 
+            return {
+                quota: (quota * Math.pow(10, -6)),
+                usage: (usage * Math.pow(10, -6))
             };
         });
-    }
+    },
     /**
-     * @static
      * @param {String} name
      * @param {Number} version
      * @param {(event: any) => void} onUpgrade
      * @returns {Promise<StoreTransaction>}
      */
-    static connect(name, version, onUpgrade) {
+    connect(name, version, onUpgrade) {
         return new Promise(function requestConnect(resolve, reject) {
             const request = window.indexedDB.open(name, version);
 
@@ -216,11 +198,31 @@ class Store {
             return new StoreTransaction(conn);
         });
     }
+};
+
+class GalleryMedia {
+    /**
+    * @constructor
+    * @param {Number} id 
+    * @param {Blob} data 
+    * @param {String} date ISO date string
+    * @param {'photo' | 'video'} type 
+    */
+    constructor(id, data, date, type) {
+        this.id = id;
+        this.data = URL.createObjectURL(data);
+        this.type = type;
+        this.date = date;
+    }
+    get preview() {
+        return this.data;
+    }
+    revokeObjectUrl() {
+        URL.revokeObjectURL(this.data);
+    }
 }
 
-const App = {
-    screen: SCREEN_GALLERY,
-    mediaCapture: undefined,
+const Gallery = {
     _media: new Map(),
     set media(mediaList) {
         this._media.clear();
@@ -230,44 +232,111 @@ const App = {
             this._media.set(id, new GalleryMedia(id, data, date, type));
             iteration++;
         }
+        CustomEvent.emit('galleryUpdate');
     },
-    get media() {
-        return Array.from(this._media.values());
-    },
-    addMediaItem(mediaItem) {
-        const { id, date, data, type } = mediaItem;
-        this._media.set(id, new GalleryMedia(id, data, date, type));
-        return true;
-    },
-    getMediaItem(itemId) {
-        itemId = typeof itemId !== 'number' ? parseInt(itemId) : itemId;
+    getItem(itemId) {
+        if (typeof itemId !== 'number') {
+            itemId = parseInt(itemId);
+        };
         return this._media.has(itemId) ? this._media.get(itemId) : null;
     },
-    deleteMediaItem(itemId) {
+    addItem(mediaItem) {
+        const { id, date, data, type } = mediaItem;
+        this._media.set(id, new GalleryMedia(id, data, date, type));
+        CustomEvent.emit('galleryUpdate');
+        return true;
+    },
+    deleteItem(itemId) {
         itemId = typeof itemId !== 'number' ? parseInt(itemId) : itemId;
         if (this._media.has(itemId)) {
-            const media = this._media.get(itemId);
+            let media = this._media.get(itemId);
             this._media.delete(itemId);
             media.revokeObjectUrl();
             media = undefined;
+            CustomEvent.emit('galleryUpdate');
         }
         return true;
     },
+    buildListImages() {
+        const fragment = document.createDocumentFragment();
+        const list = this._media.values();
+        let iteration = list.next();
+        while (!iteration.done) {
+            const { preview, id } = iteration.value;
+            // image
+            const span = document.createElement('span');
+            span.setAttribute('style', `background-image:url('${preview}');`);
+            span.setAttribute('role', 'presentation');
+            // open-preview
+            const atag = document.createElement('a');
+            atag.href = '#';
+            atag.dataset.id = id;
+            atag.dataset.eventId = 'anchor-open-preview';
+            // container
+            const li = document.createElement('li');
+            li.id = id;
+            li.classList = 'gallery-list-item';
+            li.appendChild(atag);
+            li.appendChild(span);
+            fragment.append(li);
+
+            iteration = list.next();
+        }
+        return fragment;
+    },
+    buildPreviewImage(itemId) {
+        if (typeof itemId !== 'number') {
+            itemId = parseInt(itemId);
+        }
+        if (this._media.has(itemId)) {
+            const { preview, id } = this._media.get(itemId);
+            const img = document.createElement('img');
+            img.src = preview;
+            img.setAttribute('role', 'presentation');
+            return img;
+        } else {
+            return undefined;
+        }
+    }
+};
+
+const App = {
+    screen: SCREEN_GALLERY,
+    previewId: undefined,
+    mediaCapture: undefined,
     startup() {
         this.mediaCapture = new MediaCapture();
 
         Store.connect(DB_NAME, DB_VERSION, DB_UPGRADE).then(function (conn) {
             conn.getItems(DB_GALLERY).then(function (results) {
-                App.media = results;
-                Gallery.render(App.media);
+                Gallery.media = results;
                 // todo: map to gallery items
                 // ? is gallery the 'landing screen'?
                 // todo: hide loading spinner and show gallery
+            }).finally(function () {
+                conn.close();
             });
         });
 
+        CustomEvent.addListener('galleryUpdate', App.renderListImages);
         const appNode = document.getElementById('capture-app');
         appNode.addEventListener('click', this.onClickHandler);
+    },
+    renderListImages() {
+        const fragment = Gallery.buildListImages();
+        const node = document.getElementById('gallery-list');
+        node.innerHTML = '';
+        node.appendChild(fragment);
+    },
+    renderPreviewImage(itemId) {
+        const previewNode = Gallery.buildPreviewImage(itemId);
+        const node = document.getElementById('preview-view');
+        node.innerHTML = '';
+        node.appendChild(previewNode);
+    },
+    resetPreview() {
+        const node = document.getElementById('preview-view');
+        node.innerHTML = '';
     },
     /**
      * @param {MouseEvent} event 
@@ -280,162 +349,105 @@ const App = {
                 break;
             case 'button-open-gallery':
                 if (App.screen === SCREEN_CAMERA) {
-                    DomUtils.showNode('screen-camera', false);
-                    App.mediaCapture.stop();
+                    DomUtils.setDisabled('button-capture', true);
+                    DomUtils.setDisplay('screen-camera', false);
+                    if (App.mediaCapture.status === MediaCaptureStatus.starting) {
+                        CustomEvent.once('cameraStart', function() {
+                            App.mediaCapture.stop();
+                        });
+                    } else {
+                        App.mediaCapture.stop();
+                    }
                 }
-                App.screen = SCREEN_GALLERY;
-                DomUtils.showNode('screen-gallery', true);
+                App.showGallery();
                 break;
             case 'button-open-camera':
+                event.preventDefault();
                 if (App.screen === SCREEN_GALLERY) {
-                    DomUtils.showNode('screen-gallery', false);
+                    DomUtils.setDisplay('screen-gallery', false);
                 }
-                App.screen = SCREEN_CAMERA;
-                DomUtils.showNode('screen-camera', true);
-                App.mediaCapture.start(document.getElementById('video-player'))
-                    .catch(function (error) {
-                        if (error.name === 'NotAllowedError') {
-                            // todo: display media error screen
-                        } else {
-                            // todo: display generic error screen
-                        }
-                        console.log(`Error - ${error.message}`);
-                    });
+                App.showCamera();
                 break;
             case 'anchor-open-preview':
                 event.preventDefault();
                 if (App.screen === SCREEN_GALLERY) {
-                    DomUtils.showNode('screen-gallery', false);
+                    DomUtils.setDisplay('screen-gallery', false);
                 }
-                App.screen = SCREEN_PREVIEW;
-                Preview.render(event.target.dataset.id);
-                DomUtils.showNode('screen-preview', true);
+                App.showPreview(event.target.dataset.id);
                 break;
             case 'button-close-preview':
-                DomUtils.showNode('screen-preview', false);
-                Preview.render(false);
+                DomUtils.setDisplay('screen-preview', false);
+                App.resetPreview();
                 App.screen = SCREEN_GALLERY;
-                DomUtils.showNode('screen-gallery', true);
+                DomUtils.setDisplay('screen-gallery', true);
                 break;
             case 'button-delete-media':
+                App.onDeleteMedia(event.target);
                 break;
         }
     },
-    async onCapture() {
-        try {
-            const media = await App.mediaCapture.capturePhoto();
-            const { quota, usage } = await Store.details();
-            if (usage < quota && (usage + media.size) < Store.maxStorage) {
-                const { id, data, date, type } = media;
-                const conn = await Store.connect(DB_NAME, DB_VERSION);
-                await conn.addItem(DB_GALLERY, { id, date, data, type });
+    onCapture() {
+        App.mediaCapture.capturePhoto().then(function (media) {
+            Store.details().then(function (details) {
+                const { quota, usage } = details;
+                if (usage < quota && (usage + media.size) < Store.maxStorage) {
+                    const { id, data, date, type } = media;
+                    Store.connect(DB_NAME, DB_VERSION).then(function (conn) {
+                        conn.addItem(DB_GALLERY, { id, date, data, type });
+                    });
+                    Gallery.addItem(media);
+                } else {
+                    // todo: notify user that image will not be saved
+                }
+            });
+        });
+    },
+    onDeleteMedia() {
+        ConfirmDialog.requestAction().then(function (isConfirmed) {
+            if (isConfirmed) {
+                Store.connect(DB_NAME, DB_VERSION).then(function (conn) {
+                    conn.deleteItem(DB_GALLERY, App.previewId).then(function () {
+                        Gallery.deleteItem(App.previewId);
+
+                        DomUtils.setDisplay('screen-preview', false);
+                        App.resetPreview();
+                        App.screen = SCREEN_GALLERY;
+                        DomUtils.setDisplay('screen-gallery', true);
+                        DomUtils.setFocus(document.getElementById('gallery-list').firstElementChild);
+                    }).finally(function () {
+                        conn.close();
+                    });
+                });
             } else {
-                // todo: notify user that image will not be saved
+                DomUtils.setFocus('button-delete-media');
             }
-            App.addMediaItem(media);
-            Gallery.render(App.media);
-        } catch (error) {
-
-        }
-    }
-};
-
-const Gallery = {
-    render(mediaList) {
-        const fragment = document.createDocumentFragment();
-        let iteration = 0;
-        while (iteration < mediaList.length) {
-            const { id, preview } = mediaList[iteration];
-            const node = this.buildGalleryListItem(id, preview, id);
-            fragment.append(node);
-            iteration++;
-        }
-        const parentNode = document.getElementById('gallery-list');
-        parentNode.innerHTML = '';
-        parentNode.appendChild(fragment);
+        });
     },
-    buildGalleryListItem(id, src) {
-        const span = document.createElement('span');
-        span.setAttribute('style', `background-image:url('${src}');`);
-        span.setAttribute('role', 'presentation');
-
-        const atag = document.createElement('a');
-        atag.href = '#';
-        atag.dataset.id = id;
-        atag.dataset.eventId = 'anchor-open-preview';
-        
-        const li = document.createElement('li');
-        li.id = id;
-        li.classList = 'gallery-list-item';
-        li.appendChild(atag);
-        li.appendChild(span);
-
-        return li;
-    }
-    
-    // render() {
-    //     const mapped = {};
-    //     const iterator = this.media.values();
-    //     let iteration = iterator.next();
-    //     while (!iteration.done) {
-    //         const media = iteration.value;
-    //         if (this.category === 'all' || this.category === media.type) {
-    //             !mapped[media.date] && (mapped[media.date] = this.buildGalleryList());
-    //             mapped[media.date].appendChild(this.buildGalleryListItem())
-    //         };
-    //         iteration = iterator.next();
-    //     }
-    //     const mappedKeys = Object.keys(mapped).sort((a, b) => {
-    //         // descending order
-    //         return new Date(a.date).getTime() > new Date(b.date).getTime() ? -1 : 1;
-    //     })
-    //     const fragment = document.createDocumentFragment();
-    //     while (mappedKeys.length) {
-    //         const key = mappedKeys.shift(); // most recent first
-    //         const value = mapped[key];
-    //         const date = new Date(key);
-    //         const dateHeading = `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
-    //         const wrapper = this.buildGalleryGroup(dateHeading);
-    //         wrapper.appendChild(value);
-    //         fragment.append(wrapper);
-    //     }
-    //     const parentNode = document.getElementById('gallery-view');
-    //     parentNode.innerHTML = '';
-    //     parentNode.appendChild(fragment);
-    // },
-    // private methods
-    // buildGalleryGroup(heading) {
-    //     const h = document.createElement('h2');
-    //     h.textContent = heading;
-    //     const div = document.createElement('div');
-    //     div.classList = 'gallery-group';
-    //     div.appendChild(h);
-    //     return div;
-    // },
-    // buildGalleryList() {
-    //     const ul = document.createElement('ul');
-    //     ul.classList = 'gallery-list';
-    //     return ul;
-    // },
-    
-};
-
-const Preview = {
-    previewId: undefined,
-    render(itemId) {
-        const node = document.getElementById('preview-view');
-        node.innerHTML = '';
-        if (itemId) {
-            const { id, preview } = App.getMediaItem(itemId);
-            const previewNode = this.buildPreviewItem(id, preview);
-            node.appendChild(previewNode);
-        }
+    // UI operations
+    showGallery() {
+        this.screen = SCREEN_GALLERY;
+        DomUtils.setDisplay('screen-gallery', true);
     },
-    buildPreviewItem(id, src) {
-        const img = document.createElement('img');
-        img.src = src;
-        img.setAttribute('role', 'presentation');
-        return img;
+    showCamera() {
+        this.screen = SCREEN_CAMERA;
+        DomUtils.setDisplay('screen-camera', true);
+        this.mediaCapture.start(document.getElementById('video-player')).then(function () {
+            DomUtils.setDisabled('button-capture', false);
+            CustomEvent.emit('cameraStart');
+        }).catch(function (error) {
+            if (error.name === 'NotAllowedError') {
+                // todo: display media error screen
+            } else {
+                // todo: display generic error screen
+            }
+            console.log(`Error - ${error.message}`);
+        });
+    },
+    showPreview(galleryId) {
+        App.previewId = parseInt(galleryId);
+        App.screen = SCREEN_PREVIEW;
+        App.renderPreviewImage(App.previewId);
+        DomUtils.setDisplay('screen-preview', true);
     }
 };
 
@@ -444,13 +456,58 @@ const ConfirmDialog = {
      * @returns {Promise<void>}
      */
     requestAction() {
+        return new Promise(function (resolve) {
+            // todo: set body-lock class
+            // todo: capture scrollY and set as body 'top'
 
+            const node = document.getElementById('confirmation-dialog');
+            node.classList = 'app-modal enter';
+            DomUtils.setFocus('button-modal-cancel');
+            node.addEventListener('click', ConfirmDialog.onClickHandler);
+            document.addEventListener('keydown', ConfirmDialog.onKeypressHandler);
+            CustomEvent.once('closeConfirmation', resolve);
+        });
     },
     onClickHandler(event) {
+        let isConfirmed = false;
+        let shouldClose = false;
+        const eventId = event.target.dataset.eventId;
+        switch (eventId) {
+            case 'dialog-close':
+            case 'dialog-cancel':
+                shouldClose = true;
+                break;
+            case 'dialog-confirm':
+                shouldClose = true;
+                isConfirmed = true;
+                break;
+        }
 
+        if (shouldClose) {
+            // todo: unset body-lock class
+            // todo: capture body 'top' and set as scrollY
+
+            const node = document.getElementById('confirmation-dialog');
+            node.removeEventListener('click', ConfirmDialog.onClickHandler);
+            document.removeEventListener('keydown', ConfirmDialog.onKeypressHandler);
+            window.setTimeout(function () {
+                node.classList = 'app-modal';
+                CustomEvent.emit('closeConfirmation', isConfirmed);
+            }, 241);
+            node.classList = 'app-modal exit';
+        }
     },
     onKeypressHandler(event) {
-
+        if (event.key === 'Tab') {
+            const activeElement = document.activeElement.id;
+            if (event.shiftKey && activeElement === 'button-modal-cancel') {
+                event.preventDefault();
+                DomUtils.setFocus('button-modal-close');
+            } else if (!event.shiftKey && activeElement === 'button-modal-close') {
+                event.preventDefault();
+                DomUtils.setFocus('button-modal-cancel');
+            }
+        }
     }
 };
 

@@ -1,5 +1,12 @@
+const MediaCaptureStatus = {
+    default: 0,
+    starting: 1,
+    started: 2
+};
+
 class MediaCapture {
     constructor() {
+        this.status = MediaCaptureStatus.default;
         this.videoNode = undefined;
         this.mediaStream = undefined;
         this.videoCapture = undefined;
@@ -13,12 +20,14 @@ class MediaCapture {
      * @returns {Promise<void>}
      */
     start(videoNode, options) {
+        this.status = MediaCaptureStatus.starting;
         this.videoNode = videoNode;
 
         const onSuccess = function (mediaStream) {
             this.mediaStream = mediaStream;
             this.videoNode.srcObject = this.mediaStream;
             this.videoNode.play();
+            this.status = MediaCaptureStatus.started;
             return true;
         }
 
@@ -51,6 +60,7 @@ class MediaCapture {
         this.videoCapture = undefined;
         this.mediaStream = undefined;
         this.videoNode = undefined;
+        this.status = MediaCaptureStatus.default;
     }
     /**
      * @returns {CapturedPhoto}

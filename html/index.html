@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <!-- todo: add strict CSP -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="img-src 'self' blob: data:;"> -->
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +19,7 @@
             </div>
             <div class="camera-controls">
                 <span class="camera-control">
-                    <button type="button" id="button-capture" class="capture-button" aria-label="Capture photo" data-event-id="button-capture"></button>
+                    <button type="button" id="button-capture" class="capture-button" aria-label="Capture photo" data-event-id="button-capture" disabled></button>
                 </span>
                 <span class="camera-control">
                     <button type="button" id="button-open-gallery" class="icon-button-light" aria-label="Open gallery" data-event-id="button-open-gallery">
@@ -58,13 +59,13 @@
             <div id="preview-view" class="preview-view"></div>
         </div>
     </div>
-    <div id="confirmation-dialog" class="app-modal">
+    <div id="confirmation-dialog" class="app-modal" role="dialog" aria-labelledby="confirmation-label" aria-describedby="confirmation-description">
         <div class="modal-wrapper">
-            <h1>Please confirm</h1>
-            <p>Are you sure you want to fully delete this image?</p>
-            <button type="button" id="button-modal-cancel">Cancel</button>
-            <button type="button" id="button-modal-confirm">Ok</button>
-            <button type="button" id="button-modal-close" aria-label="Close">
+            <h1 id="confirmation-label" class="modal-heading">Delete media</h1>
+            <p id="confirmation-description" class="modal-text">Are you sure you want to delete this photo?</p>
+            <button type="button" id="button-modal-cancel" class="modal-button-secondary" data-event-id="dialog-cancel">Cancel</button>
+            <button type="button" id="button-modal-confirm" class="modal-button-primary" data-event-id="dialog-confirm">Ok</button>
+            <button type="button" id="button-modal-close" class="modal-button-close" aria-label="Close" data-event-id="dialog-close">
                 <svg xmlns="http://www.w3.org/2000/svg" height="48" viewBox="0 96 960 960" width="48" aria-hidden="true">
                     <path d="m249 849-42-42 231-231-231-231 42-42 231 231 231-231 42 42-231 231 231 231-42 42-231-231-231 231Z"/>
                 </svg>
