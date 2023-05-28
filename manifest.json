@@ -1,5 +1,26 @@
 {
+    "id": "/manifest.json",
     "short_name": "Photo Booth",
     "description": "Media-capture application",
-    "icons": []
+    "start_url": "/html/index.html",
+    "display": "fullscreen",
+    "display_override": ["fullscreen", "standalone", "minimal-ui"],
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/public/images/android-chrome-192x192.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "/public/images/android-chrome-512x512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        },
+        {
+            "src": "/public/images/apple-touch-icon.png",
+            "type": "image/png",
+            "sizes": "180x180"
+        }
+    ]
 }
