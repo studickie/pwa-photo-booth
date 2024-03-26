@@ -6,7 +6,7 @@ Captured photos are stored within the browser, up-to a maximum of 10Mb.
 
 ## Installation
 
-Using Chrome or Safari, [**install the PWA**](https://studickie.github.io/photo-booth/index.html). 
+Using Chrome or Safari, [**install the PWA**](https://studickie.github.io/pwa-photo-booth/index.html). 
 
 For best experience: use a mobile device.
 
