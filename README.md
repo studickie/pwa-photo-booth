@@ -2,7 +2,7 @@
 
 A web-based media capture app that leverages browser API's for WebRTC, IndexedDB and Service Workers, to create an offline-capable app for capturing, storing and managing your photos.
 
-Captured photos are stored within the browser, up-to a maximum of 10Mb.
+Captured photos are stored within the browser, up-to a maximum of 10MB.
 
 ## Installation
 
