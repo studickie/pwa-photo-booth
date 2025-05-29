@@ -1,0 +1,46 @@
+:root {
+    --color-primary: #D0BCFF;
+    --color-onprimary: #381E72;
+    --color-surface: #141217;
+    --color-onsurface: #E6E0E9;
+    --color-surface-variant: #E7E0EC;
+    --color-onsurface-variant: #49454F;
+    --color-error: #B3261E;
+    --color-onerror: #FFFFFF;
+    --color-container-primary: #4F378B;
+    --color-oncontainer-primary: #EADDFF;
+    --color-container-error: #F9DEDC;
+    --color-oncontainer-error: #8C1D18;
+    --color-outline: #938F99;
+    --color-outline-variant: #49454F;
+}
+
+.type-display {
+    font-size: 2.8em;
+    line-height: 1.15;
+    font-weight: 400;
+}
+
+.type-headline {
+    font-size: 1.75em;
+    line-height: 1.28;
+    font-weight: 400;
+}
+
+.type-title {
+    font-size: 1em;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.type-body {
+    font-size: 0.875em;
+    line-height: 1.45;
+    font-weight: 400;
+}
+
+.type-label {
+    font-size: 0.75em;
+    line-height: 1.33;
+    font-weight: 500;
+}
