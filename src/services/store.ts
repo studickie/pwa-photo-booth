@@ -9,7 +9,7 @@ type OnUpgradeHandler = (event: IDBVersionChangeEvent) => void;
 const onUpgrade: OnUpgradeHandler = (event) => {
     const db = (event.target as VersionChangeTarget).result;
     console.log(`Upgrading to version ${db.version}`);
-    db.createObjectStore('todo', { keyPath: 'id' });
+    db.createObjectStore('gallery', { keyPath: 'id' });
 }
 
 const getDatabase = (dbName: string, dbVersion: number, onUpgrade: OnUpgradeHandler): Promise<IDBDatabase> =>

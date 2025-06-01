@@ -1,17 +1,21 @@
 import { useContext } from 'react';
 import './App.css'
 import { storeContext } from './context/storeContext';
+import MediaStreamProvider from './context/mediaStreamContext';
+import CameraPage from './pages/cameraPage/CameraPage';
+import ShowLoading from './components/ShowLoading';
+import ShowError from './components/ShowError';
 
 function App() {
-    const { isReady } = useContext(storeContext);
+    const { isLoading, hasError } = useContext(storeContext);
     return (
-        <>
-            {
-                isReady
-                    ? <p>Loaded IndexedDB</p>
-                    : <p>Loading...</p>
-            }
-        </>
+        <ShowError hasError={hasError}>
+            <ShowLoading isLoading={isLoading} message='Store Loading...'>
+                <MediaStreamProvider>
+                    <CameraPage />
+                </MediaStreamProvider>
+            </ShowLoading>
+        </ShowError>
     );
 }
 
