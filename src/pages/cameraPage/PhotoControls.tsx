@@ -1,15 +1,23 @@
+import { useVideoPlayerContext } from '../../context/videoPlayerContext';
 import useCapturePhoto from '../../hooks/useCapturePhoto';
 import useStore from '../../hooks/useStore';
+import { getActiveTrackSettings } from '../../services/mediaStream';
 import type { GalleryPhoto } from '../../types/storeModel';
 
-function PhotoControls() {
+interface Props {
+    mediaStream: MediaStream | null;
+}
 
-    const capturePhoto = useCapturePhoto('camera-playback');
-    const { add } = useStore<GalleryPhoto>('gallery');
+function PhotoControls({ mediaStream }: Props ) {
+
+    const videoRef = useVideoPlayerContext();
+    const capturePhoto = useCapturePhoto();
+    const { add: addGalleryPhoto } = useStore<GalleryPhoto>('gallery-photos');
 
     const onCapturePhoto = () => {
-        capturePhoto().then((imageBlob) => {
-            add({ 
+        const { width, height } = getActiveTrackSettings(mediaStream);
+        capturePhoto(videoRef.current, { width, height }).then((imageBlob) => {
+            addGalleryPhoto({ 
                 createdOn: new Date(),
                 blob: imageBlob
             }).then((id) => {

@@ -1,36 +1,40 @@
-import { createContext, useEffect, useReducer, type PropsWithChildren } from 'react';
-// import type { GetReturnType } from '../types/helpers';
-// withMediaStream: <F extends (m: MediaStream) => any>(fn: F) => GetReturnType<F>
+import { createContext, useContext, useEffect, useReducer, type PropsWithChildren } from 'react';
 
 interface MediaStreamContext {
     isLoading: Boolean;
     hasError: Boolean;
-    mediaStream: MediaStream;
+    mediaStream: MediaStream | null;
 }
 
-const initialState: MediaStreamContext = {
+type ContextState = MediaStreamContext;
+
+const initialState: ContextState = {
     isLoading: true,
     hasError: false,
-    mediaStream: ({} as MediaStream)
+    mediaStream: null
 };
 
-type ActionType = 'CONNECTION_SUCCESS' | 'CONNECTION_ERROR';
-type ReducerAction = Partial<MediaStreamContext> & { type: ActionType };
+type ContextAction = { 
+    type: 'connectSuccess',
+    mediaStream: MediaStream
+} | {
+    type: 'connectError'
+};
 
-function reducer(state: MediaStreamContext, action: ReducerAction): MediaStreamContext {
+function reducer(state: ContextState, action: ContextAction) {
     const { type } = action;
     switch(type) {
-        case 'CONNECTION_SUCCESS':
+        case 'connectSuccess':
             return {  ...state,
                 isLoading: false, 
                 hasError: false, 
-                mediaStream: (action.mediaStream as MediaStream)
+                mediaStream: action.mediaStream
             };
-        case 'CONNECTION_ERROR':
+        case 'connectError':
             return {  ...state,
                 isLoading: false, 
                 hasError: true, 
-                mediaStream: ({} as MediaStream)
+                mediaStream: null
             };
         default:
             console.log(`Unsupported action type "${type}"`);
@@ -38,9 +42,11 @@ function reducer(state: MediaStreamContext, action: ReducerAction): MediaStreamC
     }
 }
 
-export const mediaStreamContext = createContext(({} as MediaStreamContext));
+const mediaStreamContext = createContext(({} as MediaStreamContext));
 
-const useProvideMediaStream = (): MediaStreamContext => {
+interface Props extends PropsWithChildren {};
+
+export const MediaStreamProvider = ({ children }: Props) => {
 
     const [state, dispatch] = useReducer(reducer, initialState);
 
@@ -49,25 +55,18 @@ const useProvideMediaStream = (): MediaStreamContext => {
             video: true,
             audio: false
         }).then(result => {
-            dispatch({ type: 'CONNECTION_SUCCESS', mediaStream: result });
+            dispatch({ type: 'connectSuccess', mediaStream: result });
         }).catch(error => {
             console.log('MediaStream Error - ', error);
-            dispatch({ type: 'CONNECTION_ERROR' });
+            dispatch({ type: 'connectError' });
         });
     }, []);
 
-    return state;
-}
-
-interface Props extends PropsWithChildren { }
-
-const MediaStreamProvider = ({ children }: Props) => {
-    const data: MediaStreamContext = useProvideMediaStream();
     return (
-        <mediaStreamContext.Provider value={data}>
+        <mediaStreamContext.Provider value={state}>
             { children }
         </mediaStreamContext.Provider>
     );
 }
 
-export default MediaStreamProvider;
+export const useMediaStreamContext = () => useContext(mediaStreamContext);

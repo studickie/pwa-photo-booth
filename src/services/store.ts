@@ -9,7 +9,7 @@ type OnUpgradeHandler = (event: IDBVersionChangeEvent) => void;
 const onUpgrade: OnUpgradeHandler = (event) => {
     const db = (event.target as VersionChangeTarget).result;
     console.log(`Upgrading to version ${db.version}`);
-    db.createObjectStore('gallery', { keyPath: 'id' });
+    db.createObjectStore('gallery-photos', { keyPath: 'id' });
 }
 
 const getDatabase = (dbName: string, dbVersion: number, onUpgrade: OnUpgradeHandler): Promise<IDBDatabase> =>
@@ -27,7 +27,7 @@ const getAllEntries = <T extends StoreModel>(store: IDBObjectStore): Promise<T[]
         request.onsuccess = () => resolve(request.result);
     });
 
-const addEntry = <T extends StoreModel>(store: IDBObjectStore, data: Omit<T, 'id'>): Promise<T['id']> =>
+const addEntry = <T extends StoreModel>(store: IDBObjectStore, data: Partial<T>): Promise<T['id']> =>
     new Promise((resolve, reject) => {
         // todo: refactor this out of here
         if (store.autoIncrement !== true) {

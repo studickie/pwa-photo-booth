@@ -1,21 +1,23 @@
 import { useEffect } from 'react';
+import { useVideoPlayerContext } from '../../context/videoPlayerContext';
 
 interface Props {
-    source: MediaStream;
+    mediaStream: MediaStream | null;
 }
 
-function CameraPlayback({ source }: Props) {
+function CameraPlayback({ mediaStream }: Props) {
 
+    const videoRef = useVideoPlayerContext();
+    
     useEffect(() => {
-        const element = document.getElementById('camera-playback') as HTMLMediaElement;
-        element.srcObject = source;
-        element.play();
-    }, [source]);
+        if (videoRef.current) {
+            videoRef.current.srcObject = mediaStream;
+            videoRef.current.play();
+        }
+    }, [videoRef, mediaStream]);
 
     return (
-        <div>
-            <video id='camera-playback'></video>
-        </div>
+        <video id='camera-playback' ref={videoRef} width='1280px' height='720px'></video>
     );
 }
 

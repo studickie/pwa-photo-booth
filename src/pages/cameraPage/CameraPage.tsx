@@ -1,17 +1,21 @@
-import { useContext } from 'react';
-import { mediaStreamContext } from '../../context/mediaStreamContext';
+import { useMediaStreamContext } from '../../context/mediaStreamContext';
 import ShowError from '../../components/ShowError';
 import ShowLoading from '../../components/ShowLoading';
 import CameraPlayback from './CameraPlayback';
 import PhotoControls from './PhotoControls';
+import { VideoPlayerProvider } from '../../context/videoPlayerContext';
 
 function CameraPage() {
-    const { isLoading, hasError, mediaStream } = useContext(mediaStreamContext);
+
+    const { isLoading, hasError, mediaStream } = useMediaStreamContext();
+    
     return (
         <ShowError hasError={hasError}>
             <ShowLoading isLoading={isLoading} message='Camera Loading...'>
-                <CameraPlayback source={mediaStream}/>
-                <PhotoControls />
+                <VideoPlayerProvider>
+                    <CameraPlayback mediaStream={mediaStream} />
+                    <PhotoControls mediaStream={mediaStream} />
+                </VideoPlayerProvider>
             </ShowLoading>
         </ShowError>
     );
