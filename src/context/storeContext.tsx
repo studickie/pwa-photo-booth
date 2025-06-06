@@ -1,40 +1,34 @@
 import { createContext, useContext, useEffect, useReducer, type PropsWithChildren } from 'react';
 import { connect } from '../services/store';
 
-interface StoreContext {
+interface StoreState {
     isLoading: Boolean;
     hasError: Boolean;
     store: IDBDatabase | null;
 };
 
-type ContextState = StoreContext;
-
-const initialState: ContextState = {
-    isLoading: true,
-    hasError: false,
-    store: null
-};
-
-type ContextAction = {
+type StoreStateAction = {
     type: 'connectSuccess',
     store: IDBDatabase
 } | {
     type: 'connectError'
 };
 
-function reducer(state: ContextState, action: ContextAction) {
+function reducer(state: StoreState, action: StoreStateAction) {
     const { type } = action;
     switch (type) {
         case 'connectSuccess':
-            return { ...state, 
-                isLoading: false, 
-                hasError: false, 
-                store: action.store 
+            return {
+                ...state,
+                isLoading: false,
+                hasError: false,
+                store: action.store
             };
         case 'connectError':
-            return { ...state, 
-                isLoading: false, 
-                hasError: true, 
+            return {
+                ...state,
+                isLoading: false,
+                hasError: true,
                 store: null
             };
         default:
@@ -43,20 +37,29 @@ function reducer(state: ContextState, action: ContextAction) {
     };
 }
 
-/**
- * @description Provide subscribers access to an IndexedDB instance
- */
+/*
+    Store Context:
+
+    Start a connection to Browser's IndexedDB, Provide 
+    subscribers with access resulting IndexedDB instance
+*/
+interface StoreContext extends StoreState { };
+
 const storeContext = createContext({} as StoreContext);
 
 interface Props extends PropsWithChildren { }
 
-export const StoreProvider = ({ children }: Props) => {
-    
-    const [state, dispatch] = useReducer(reducer, initialState);
+export function StoreProvider({ children }: Props) {
+
+    const [state, dispatch] = useReducer(reducer, {
+        isLoading: true,
+        hasError: false,
+        store: null
+    });
 
     useEffect(() => {
-        connect().then((result) => {
-            dispatch({ type: 'connectSuccess', store: result });
+        connect().then((store) => {
+            dispatch({ type: 'connectSuccess', store });
         }).catch((error: any) => {
             console.log('IndexedDB Error - ', error);
             dispatch({ type: 'connectError' });
