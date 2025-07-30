@@ -1,0 +1,7 @@
+.icon-button {
+    
+}
+
+.icon-button > * {
+    pointer-events: none;
+}

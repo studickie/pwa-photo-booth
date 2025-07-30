@@ -13,6 +13,12 @@
     --color-oncontainer-error: #8C1D18;
     --color-outline: #938F99;
     --color-outline-variant: #49454F;
+    --rounding-xs: 4px;
+    --rounding-sm: 8px;
+    --rounding-md: 12px;
+    --rounding-lg: 16px;
+    --rounding-xl: 20px;
+    --rounding-full: 50%;
 }
 
 .type-display {

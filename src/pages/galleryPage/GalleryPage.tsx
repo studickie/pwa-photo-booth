@@ -5,7 +5,7 @@ import GalleryThumbnail from './GalleryThumbnail';
 import { useGalleryContext } from '../../context/galleryContext';
 
 interface Props {
-    store: IDBDatabase
+    store: IDBDatabase;
 };
 
 function GalleryPage({ store }: Props) {

@@ -1,0 +1,16 @@
+/* max. size is 960px / 720px, 4:3 ratio  */
+.camera-playback-wrapper {
+    box-sizing: border-box;
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    height: auto;
+    /* aspect-ratio: 4/3; */
+    border: 1px solid black;
+}
+
+.camera-playback-video {
+    display: block;
+    width: 100%;
+    height: 100%;
+}

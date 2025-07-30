@@ -4,7 +4,7 @@ import CameraPage from './pages/cameraPage/CameraPage';
 import ShowLoading from './components/ShowLoading';
 import ShowError from './components/ShowError';
 import './App.css';
-import GalleryPage from './pages/galleryPage/GalleryPage';
+// import GalleryPage from './pages/galleryPage/GalleryPage';
 import { GalleryProvider } from './context/galleryContext';
 
 function App() {
@@ -16,7 +16,7 @@ function App() {
                     <MediaStreamProvider>
                         <CameraPage store={store as IDBDatabase} />
                     </MediaStreamProvider>
-                    <GalleryPage store={store as IDBDatabase} />
+                    {/* <GalleryPage store={store as IDBDatabase} /> */}
                 </GalleryProvider>
             </ShowLoading>
         </ShowError>

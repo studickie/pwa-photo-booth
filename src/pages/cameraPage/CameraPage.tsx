@@ -1,9 +1,10 @@
 import { useMediaStreamContext } from '../../context/mediaStreamContext';
-import ShowError from '../../components/ShowError';
+// import ShowError from '../../components/ShowError';
 import ShowLoading from '../../components/ShowLoading';
 import CameraPlayback from './CameraPlayback';
 import PhotoControls from './PhotoControls';
 import { VideoPlayerProvider } from '../../context/videoPlayerContext';
+import './cameraPage.css';
 
 interface Props {
     store: IDBDatabase
@@ -12,16 +13,16 @@ interface Props {
 function CameraPage({ store }: Props) {
     const { isLoading, hasError, mediaStream } = useMediaStreamContext();
     return (
-        <ShowError hasError={hasError}>
+        // <ShowError hasError={hasError}>
             <ShowLoading isLoading={isLoading} message='Camera Loading...'>
                 <VideoPlayerProvider>
                     <CameraPlayback mediaStream={mediaStream} />
-                    <PhotoControls 
+                    {/* <PhotoControls 
                         mediaStream={mediaStream as MediaStream} 
-                        store={store as IDBDatabase} />
+                        store={store as IDBDatabase} /> */}
                 </VideoPlayerProvider>
             </ShowLoading>
-        </ShowError>
+        // </ShowError>
     );
 }
 

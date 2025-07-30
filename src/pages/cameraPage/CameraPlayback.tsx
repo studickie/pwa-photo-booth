@@ -22,7 +22,9 @@ function CameraPlayback({ mediaStream }: Props) {
     }, [videoRef.current, mediaStream]);
 
     return (
-        <video id='camera-playback' ref={videoRef} width='1280px' height='720px'></video>
+        <div className='camera-playback-wrapper'>
+            <video className='camera-playback-video' ref={videoRef}></video>
+        </div>
     );
 }
 
